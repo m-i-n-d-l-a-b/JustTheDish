@@ -23,7 +23,7 @@ const headingSerif = Merriweather({
 export const metadata: Metadata = {
   title: "Just The Dish",
   description:
-    "Extract and simplify recipes from any cooking website. Get ingredient lists and step-by-step instructions.",
+    "Skip the ads and pop-ups. Get straight to the recipe with organized ingredients and easy instructions, every time.",
 };
 
 export default function RootLayout({
