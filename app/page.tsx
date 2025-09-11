@@ -63,11 +63,11 @@ export default function RecipeSummarizerPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <header className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4 text-balance">Recipe Summarizer</h1>
+          <h1 className="text-4xl md:text-5xl font-bold font-serif text-foreground mb-4 text-balance">Just The Dish</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty">
             Extract and simplify recipes from any cooking website. Get clean ingredient lists and step-by-step
             instructions.

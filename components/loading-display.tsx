@@ -1,26 +1,19 @@
 import { Card, CardContent } from "@/components/ui/card"
-import { ChefHat, Clock } from "lucide-react"
 
-export function LoadingDisplay() {
+export function LoadingDisplay(): JSX.Element {
   return (
     <Card>
       <CardContent className="p-8">
-        <div className="flex flex-col items-center justify-center space-y-4">
-          <div className="relative">
-            <ChefHat className="h-12 w-12 text-primary animate-pulse" />
-            <Clock className="h-6 w-6 text-muted-foreground absolute -bottom-1 -right-1 animate-spin" />
+        <div className="space-y-6 animate-pulse" aria-busy="true" aria-live="polite">
+          <div className="h-6 w-1/3 bg-muted rounded" />
+          <div className="space-y-3">
+            <div className="h-4 w-full bg-muted rounded" />
+            <div className="h-4 w-5/6 bg-muted rounded" />
+            <div className="h-4 w-2/3 bg-muted rounded" />
           </div>
-          <div className="text-center space-y-2">
-            <h3 className="text-lg font-semibold text-foreground">Extracting Recipe</h3>
-            <p className="text-sm text-muted-foreground max-w-md text-pretty">
-              We're analyzing the webpage and extracting the recipe ingredients and instructions. This usually takes a
-              few seconds.
-            </p>
-          </div>
-          <div className="flex space-x-1">
-            <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-            <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-            <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+          <div className="flex space-x-2">
+            <div className="h-8 w-20 bg-muted rounded" />
+            <div className="h-8 w-20 bg-muted rounded" />
           </div>
         </div>
       </CardContent>
