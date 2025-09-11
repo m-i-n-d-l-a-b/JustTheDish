@@ -6,6 +6,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Spinner } from "@/components/ui/spinner"
 import { ChefHat, Link } from "lucide-react"
 
 interface RecipeFormProps {
@@ -50,15 +52,15 @@ export function RecipeForm({ onSubmit, disabled }: RecipeFormProps) {
 
   return (
     <Card className="w-full">
-      <CardContent className="p-6">
+      <CardContent className="p-8">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex items-center gap-2 mb-4">
-            <ChefHat className="h-5 w-5 text-primary" />
+          <div className="flex items-center gap-2 mb-4 text-[#1f2937]">
+            <ChefHat className="h-5 w-5 text-current" />
             <h2 className="text-lg font-semibold">Enter Recipe URL</h2>
           </div>
 
           <div className="space-y-2">
-            <div className="relative">
+            <div className="relative w-full">
               <Link className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="url"
@@ -78,12 +80,22 @@ export function RecipeForm({ onSubmit, disabled }: RecipeFormProps) {
           </div>
 
           <Button type="submit" disabled={disabled || !url.trim()} className="w-full" size="lg">
-            {disabled ? "Extracting Recipe..." : "Extract Recipe"}
+            {disabled ? (
+              <>
+                <Spinner className="h-4 w-4" />
+                Extracting...
+              </>
+            ) : (
+              "Extract Recipe"
+            )}
           </Button>
         </form>
 
-        <div className="mt-4 text-xs text-muted-foreground">
-          <p>Supported sites include AllRecipes, Food Network, Bon Appétit, and many more cooking websites.</p>
+        <div className="mt-6 flex flex-wrap items-center gap-2 text-xs text-[#6b7280]">
+          <Badge variant="outline">AllRecipes</Badge>
+          <Badge variant="outline">Food Network</Badge>
+          <Badge variant="outline">Bon Appétit</Badge>
+          <span>+ dozens more</span>
         </div>
       </CardContent>
     </Card>
