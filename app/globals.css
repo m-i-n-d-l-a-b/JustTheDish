@@ -6,30 +6,30 @@
 :root {
   /* Updated color palette for food-focused design */
   --background: oklch(0.98 0.005 95); /* Soft off-white */
-  --foreground: oklch(0.3 0.01 95); /* Dark neutral text */
+  --foreground: 215 15% 34%; /* Body text #4b5563 */
   --card: oklch(0.97 0.003 95); /* Light card background */
-  --card-foreground: oklch(0.3 0.01 95);
+  --card-foreground: 215 15% 34%;
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.3 0.01 95);
-  --primary: oklch(0.65 0.13 141); /* Herb green */
+  --primary: oklch(0.6 0.12 150); /* Bolder sage green */
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.8 0.04 95); /* Accessible neutral */
   --secondary-foreground: oklch(0.3 0.01 95);
   --muted: oklch(0.95 0.02 95);
-  --muted-foreground: oklch(0.5 0.01 95);
-  --accent: oklch(0.65 0.13 141);
+  --muted-foreground: 220 9% 46%; /* Caption text #6b7280 */
+  --accent: oklch(0.6 0.12 150); /* Sage accent */
   --accent-foreground: oklch(1 0 0);
   --destructive: oklch(0.75 0.16 70); /* Amber for errors */
   --destructive-foreground: oklch(0.2 0.02 95);
   --border: oklch(0.88 0.01 95);
   --input: oklch(1 0 0);
-  --ring: oklch(0.65 0.13 141 / 0.5);
+  --ring: oklch(0.6 0.12 150 / 0.5);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.5rem; /* Rounded corners */
+  --radius: 0.75rem; /* Softer card radius */
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.3 0.01 95);
   --sidebar-primary: oklch(0.65 0.13 141);
@@ -76,8 +76,8 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
   --font-serif: var(--font-heading);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -122,18 +122,13 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans text-base leading-relaxed;
     background-image: radial-gradient(circle at 50% 25%, hsl(var(--background)) 0%, hsl(var(--muted)) 100%),
       url("/grain.svg");
     background-repeat: no-repeat, repeat;
     background-size: cover, 200px 200px;
   }
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  h1 {
     font-family: var(--font-serif);
   }
 }
