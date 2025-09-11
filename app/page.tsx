@@ -69,8 +69,8 @@ export default function RecipeSummarizerPage() {
         <header className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold font-serif text-foreground mb-4 text-balance">Just The Dish</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty">
-            Extract and simplify recipes from any cooking website. Get clean ingredient lists and step-by-step
-            instructions.
+            Skip the ads and pop-ups. Get straight to the recipe with organized ingredients and easy instructions,
+            every time.
           </p>
         </header>
 
