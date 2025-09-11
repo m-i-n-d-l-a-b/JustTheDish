@@ -1,6 +1,6 @@
 # Environment Setup Guide
 
-This document explains how to set up environment variables for the Recipe Summarizer application.
+This document explains how to set up environment variables for the Just The Dish application.
 
 ## Required Environment Variables
 

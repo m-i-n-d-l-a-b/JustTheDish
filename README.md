@@ -1,4 +1,4 @@
-## Recipe Summarizer
+## Just The Dish
 
 Extract clean, structured recipes from cooking websites. Paste a URL and get a concise ingredient list and step-by-step instructions, optionally download as a simple text-based PDF.
 
