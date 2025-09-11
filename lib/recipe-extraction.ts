@@ -168,18 +168,45 @@ export class RecipeExtractionService {
    */
   private parseGeminiResponse(responseText: string): GeminiRecipeResponse {
     try {
-      // Clean up the response text (remove markdown code blocks if present)
-      let cleanedResponse = responseText.trim()
-      
-      // Remove markdown code block markers
-      if (cleanedResponse.startsWith('```json')) {
-        cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '')
-      } else if (cleanedResponse.startsWith('```')) {
-        cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '')
-      }
+      // Prefer strict JSON, but defensively extract when prose is present
+      const text = responseText.trim()
 
-      // Parse JSON
-      const parsedResponse = JSON.parse(cleanedResponse)
+      // Fast path: pure JSON
+      let parsedResponse: unknown
+      const firstBrace = text.indexOf('{')
+      const lastBrace = text.lastIndexOf('}')
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        const candidate = text.slice(firstBrace, lastBrace + 1)
+        try {
+          parsedResponse = JSON.parse(candidate)
+        } catch {
+          // Remove common code-fence patterns and retry
+          const unfenced = text
+            .replace(/^```json\s*/i, '')
+            .replace(/^```/i, '')
+            .replace(/```\s*$/i, '')
+            .trim()
+          parsedResponse = JSON.parse(unfenced)
+        }
+      } else {
+        parsedResponse = JSON.parse(text)
+      }
+      
+      // Normalize steps: if model returned array of objects with "step", map to strings
+      if (
+        parsedResponse &&
+        typeof parsedResponse === 'object' &&
+        'recipe' in (parsedResponse as any) &&
+        (parsedResponse as any).recipe &&
+        Array.isArray((parsedResponse as any).recipe.steps)
+      ) {
+        const steps = (parsedResponse as any).recipe.steps
+        if (steps.length > 0 && typeof steps[0] === 'object' && steps[0] !== null) {
+          (parsedResponse as any).recipe.steps = steps.map((s: any) =>
+            typeof s === 'string' ? s : (typeof s?.step === 'string' ? s.step : JSON.stringify(s))
+          )
+        }
+      }
       
       // Validate against schema
       return validateGeminiResponse(parsedResponse)
