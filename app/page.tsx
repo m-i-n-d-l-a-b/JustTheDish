@@ -91,7 +91,7 @@ export default function RecipeSummarizerPage() {
 
         {/* Footer */}
         <footer className="mt-16 text-center text-sm text-muted-foreground">
-          <p>Extract recipes from your favorite cooking websites with ease.</p>
+          <p>Your favorite recipes, simplified in seconds.</p>
         </footer>
       </div>
     </main>
