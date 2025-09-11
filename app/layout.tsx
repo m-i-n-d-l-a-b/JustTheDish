@@ -34,7 +34,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${geistMono.variable} ${headingSerif.variable} antialiased`}>
-        {children}
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-0 opacity-10 pointer-events-none bg-repeat"
+          style={{ backgroundImage: 'url("/herb-pattern-2.svg")' }}
+        />
+        <div className="relative z-10">
+          {children}
+        </div>
       </body>
     </html>
   )

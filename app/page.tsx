@@ -67,7 +67,7 @@ export default function RecipeSummarizerPage() {
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <header className="text-center mb-6">
-          <p className="text-sm text-[#6b7280] mb-2">Recipes, simplified.</p>
+          
           <h1 className="text-[34px] font-bold tracking-tight font-serif text-[#1f2937] mb-4 text-balance">
             Just The Dish
           </h1>
@@ -94,7 +94,6 @@ export default function RecipeSummarizerPage() {
 
         {/* Footer */}
         <footer className="mt-16 pt-8 border-t border-muted text-center text-sm text-[#6b7280]">
-          <p>Your favorite recipes, simplified—fast.</p>
           <span className="block text-xs mt-1">Recipes, simplified.</span>
         </footer>
       </div>

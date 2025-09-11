@@ -167,15 +167,21 @@ export class GeminiClient {
     operation: () => Promise<T>,
     timeoutMs: number
   ): Promise<T> {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
-
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
     try {
-      const result = await operation()
-      clearTimeout(timeoutId)
-      return result
+      const timeoutPromise = new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          const timeoutError = new Error("Request timed out")
+          ;(timeoutError as Error).name = "AbortError"
+          reject(timeoutError)
+        }, timeoutMs)
+      })
+
+      const result = await Promise.race([operation(), timeoutPromise])
+      if (timeoutId) clearTimeout(timeoutId)
+      return result as T
     } catch (error) {
-      clearTimeout(timeoutId)
+      if (timeoutId) clearTimeout(timeoutId)
       throw error
     }
   }

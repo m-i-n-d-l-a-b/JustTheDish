@@ -111,11 +111,7 @@ export const recipeSchema = z.object({
   ingredients: z
     .array(ingredientSchema)
     .min(1, "Recipe must have at least one ingredient")
-    .max(50, "Too many ingredients (maximum 50)")
-    .refine(
-      (ingredients) => new Set(ingredients.map(i => i.trim().toLowerCase())).size === ingredients.length,
-      "Duplicate ingredients are not allowed"
-    ),
+    .max(50, "Too many ingredients (maximum 50)"),
   
   steps: z
     .array(recipeStepSchema)
@@ -220,7 +216,9 @@ export function sanitizeRecipe(recipe: Recipe): Recipe {
   return {
     ...recipe,
     title: recipe.title.trim(),
-    ingredients: recipe.ingredients.map(ingredient => ingredient.trim()),
+    // Preserve ingredients exactly as written; do not trim or normalize
+    ingredients: recipe.ingredients,
+    // Keep steps readable by trimming leading/trailing whitespace only
     steps: recipe.steps.map(step => step.trim()),
     servings: recipe.servings?.trim() || undefined,
     cookTime: recipe.cookTime?.trim() || undefined,
