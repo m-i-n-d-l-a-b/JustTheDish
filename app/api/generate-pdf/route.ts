@@ -15,11 +15,11 @@ export async function POST(request: NextRequest) {
     // Validate incoming recipe payload
     const validRecipe = validateRecipe(recipe)
 
-    const pdfBuffer = await generateRecipePDF(validRecipe)
+    const pdfArrayBuffer = await generateRecipePDF(validRecipe)
 
     const safeFileName = `${validRecipe.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.pdf`
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(pdfArrayBuffer, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${safeFileName}"`,
@@ -40,7 +40,7 @@ async function generateRecipePDF(recipe: {
   servings?: string
   cookTime?: string
   prepTime?: string
-}): Promise<Buffer> {
+}): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ size: "LETTER", margin: 50 })
@@ -48,7 +48,11 @@ async function generateRecipePDF(recipe: {
       const chunks: Buffer[] = []
       doc.on("data", (chunk: Buffer) => chunks.push(chunk))
       doc.on("error", (err) => reject(err))
-      doc.on("end", () => resolve(Buffer.concat(chunks)))
+      doc.on("end", () => {
+        const buffer = Buffer.concat(chunks)
+        const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+        resolve(arrayBuffer)
+      })
 
       // Title
       doc.fontSize(22).text(recipe.title, { align: "left" })
