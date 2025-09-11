@@ -10,8 +10,8 @@ Rules (be concise, never guess):
 - Required in recipe: title (string), ingredients (string[]), steps (string[]).
 - Optional: servings, prepTime, cookTime (strings). Leave out if unknown.
 - Times: never estimate or convert. Only include if certain. Otherwise omit.
-- Ingredients: keep quantities/units when present; avoid marketing/fluff.
-- Steps: clear and actionable; avoid redundant numbering.
+- Ingredients: return the list verbatim as written (one string per line). Preserve wording, order, punctuation, and capitalization. Do not paraphrase, merge, split, convert, or normalize units. No additions or removals.
+- Steps: simplify and clarify only. Make instructions clear and actionable; remove redundant numbering and fluff without changing meaning.
 
 Allowed error types: not-recipe | paywall | url-inaccessible | parsing-failed | content-blocked.`
 
@@ -112,18 +112,17 @@ Please visit the URL and extract the recipe information following the exact form
  * Validation prompt to double-check extracted recipes
  */
 export function createRecipeValidationPrompt(extractedRecipe: string): string {
-  return `Please validate this extracted recipe data and fix any issues:
+  return `Validate this extracted recipe JSON and correct only if needed:
 
 ${extractedRecipe}
 
-Check for:
-1. Valid JSON format
-2. Complete ingredient measurements
-3. Clear, actionable instructions
-4. Reasonable serving sizes and times
-5. Proper recipe structure
+Requirements:
+1. JSON must be valid and match the expected schema.
+2. Ingredients MUST be copied verbatim from the source list: preserve wording, order, punctuation, and capitalization. Do NOT paraphrase, merge, split, convert, or normalize units.
+3. Instructions may be simplified for clarity only; do not change meaning. Remove redundant numbering/fluff.
+4. Optional fields (servings/prepTime/cookTime) only if certain.
 
-Return the corrected recipe in the same JSON format, or return an error if the recipe is fundamentally flawed.`
+Return the corrected JSON, or an error object if the recipe is fundamentally flawed.`
 }
 
 /**
