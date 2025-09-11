@@ -1,6 +1,6 @@
-import { GoogleGenerativeAI, GenerativeModel, GenerationConfig } from "@google/generative-ai"
+import { GoogleGenAI } from "@google/genai"
 import { getEnv } from "./env"
-import { geminiErrorSchema, type GeminiError } from "./schemas"
+import { geminiErrorSchema, geminiResponseJsonSchema } from "./schemas"
 
 /**
  * Custom error class for Gemini API errors
@@ -74,8 +74,7 @@ function sleep(ms: number): Promise<void> {
  * Gemini API client with retry logic and error handling
  */
 export class GeminiClient {
-  private genAI: GoogleGenerativeAI
-  private model: GenerativeModel
+  private genAI: GoogleGenAI
   private requestTimeout: number
   private maxRetries: number
   private baseRetryDelay: number
@@ -86,40 +85,21 @@ export class GeminiClient {
     const env = getEnv()
     console.log("🔧 Environment loaded successfully")
     
-    // Validate API key exists
-    if (!env.GOOGLE_API_KEY) {
-      console.error("❌ No Google API key found in environment")
-      throw new Error("Google API key is required. Please set GOOGLE_API_KEY environment variable.")
+    // Fail fast if API key is not configured
+    if (!env.GOOGLE_API_KEY || env.GOOGLE_API_KEY.trim().length === 0) {
+      throw new Error(
+        "Google API key is missing. Set GOOGLE_API_KEY in your .env.local and restart the dev server."
+      )
     }
-    
-    console.log("🔑 API key found, length:", env.GOOGLE_API_KEY.length)
 
-    this.genAI = new GoogleGenerativeAI(env.GOOGLE_API_KEY)
+    this.genAI = new GoogleGenAI({ apiKey: env.GOOGLE_API_KEY })
     this.requestTimeout = env.GEMINI_REQUEST_TIMEOUT
     this.maxRetries = env.GEMINI_MAX_RETRIES
     this.baseRetryDelay = env.GEMINI_RETRY_DELAY
-
-    // Configure the model
-    this.model = this.genAI.getGenerativeModel({
-      model: env.GEMINI_MODEL,
-      generationConfig: this.getGenerationConfig(),
-    })
-    
     console.log("✅ GeminiClient initialized with model:", env.GEMINI_MODEL)
   }
 
-  /**
-   * Get generation configuration for the model
-   */
-  private getGenerationConfig(): GenerationConfig {
-    return {
-      temperature: 0.1, // Low temperature for consistent, factual extraction
-      topP: 0.8,
-      topK: 40,
-      maxOutputTokens: 8192, // Enough for detailed recipes
-      responseMimeType: "application/json", // Force JSON response
-    }
-  }
+  // Note: generation config kept minimal; prompt enforces strict JSON.
 
   /**
    * Parse and categorize Gemini API errors
@@ -142,11 +122,11 @@ export class GeminiClient {
 
     // Try to parse as Gemini API error
     try {
-      const geminiError = geminiErrorSchema.parse(error)
-      const { code, message, status } = geminiError.error
+      const parsed = geminiErrorSchema.parse(error)
+      const { code, message, status } = parsed.error
 
       // Handle specific error types
-      switch (code) {
+      switch (code ?? -1) {
         case 429:
           if (message.toLowerCase().includes("quota")) {
             return new GeminiQuotaError(message)
@@ -171,7 +151,7 @@ export class GeminiClient {
           return new GeminiError(message, code, status, true)
         
         default:
-          return new GeminiError(message, code, status, code >= 500)
+          return new GeminiError(message, code, status, (code ?? -1) >= 500)
       }
     } catch {
       // Fallback for unknown errors
@@ -207,7 +187,7 @@ export class GeminiClient {
     operation: () => Promise<T>,
     operationName: string = "Gemini API request"
   ): Promise<T> {
-    let lastError: GeminiError
+    let lastError: GeminiError | null = null
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
@@ -248,8 +228,9 @@ export class GeminiClient {
     }
 
     // All retries exhausted
-    console.error(`❌ ${operationName} failed after ${this.maxRetries + 1} attempts: ${lastError.message}`)
-    throw lastError
+    const finalMessage = lastError ? lastError.message : "Unknown error"
+    console.error(`❌ ${operationName} failed after ${this.maxRetries + 1} attempts: ${finalMessage}`)
+    throw (lastError ?? new Error(finalMessage))
   }
 
   /**
@@ -257,18 +238,17 @@ export class GeminiClient {
    */
   async generateContent(prompt: string, requestId?: string): Promise<string> {
     const operation = async () => {
-      const result = await this.model.generateContent(prompt)
-      const response = result.response
-      
-      if (!response) {
-        throw new Error("No response received from Gemini")
-      }
+      const env = getEnv()
+      const result = await this.genAI.models.generateContent({
+        model: env.GEMINI_MODEL,
+        contents: [prompt],
+        config: {
+          tools: [{ urlContext: {} }],
+        },
+      })
 
-      const text = response.text()
-      if (!text) {
-        throw new Error("Empty response received from Gemini")
-      }
-
+      const text = (result as { text?: string }).text
+      if (!text) throw new Error("Empty response received from Gemini")
       return text
     }
 

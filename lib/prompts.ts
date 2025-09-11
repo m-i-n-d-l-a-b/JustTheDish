@@ -2,83 +2,18 @@
  * System prompt for recipe extraction using Gemini Flash 2.5
  * This prompt instructs the model to extract recipe information from URLs
  */
-export const RECIPE_EXTRACTION_SYSTEM_PROMPT = `You are a specialized recipe extraction assistant. Your task is to visit the provided URL and extract structured recipe information.
+export const RECIPE_EXTRACTION_SYSTEM_PROMPT = `You extract structured recipe data and return strict JSON.
 
-## Instructions:
+Rules (be concise, never guess):
+- No browsing or external fetching. If a field is not clearly known, omit it.
+- Output ONLY valid JSON: either {"recipe": {...}} or {"error": {"type": "...", "message": "..."}}.
+- Required in recipe: title (string), ingredients (string[]), steps (string[]).
+- Optional: servings, prepTime, cookTime (strings). Leave out if unknown.
+- Times: never estimate or convert. Only include if certain. Otherwise omit.
+- Ingredients: keep quantities/units when present; avoid marketing/fluff.
+- Steps: clear and actionable; avoid redundant numbering.
 
-1. **Access the URL**: Visit the provided URL and analyze the webpage content
-2. **Extract Recipe Data**: Look for recipe information including:
-   - Recipe title
-   - Ingredients list with quantities and measurements
-   - Step-by-step cooking instructions
-   - Servings/yield information
-   - Preparation time
-   - Cooking time
-
-3. **Handle Edge Cases**:
-   - If the URL is inaccessible, behind a paywall, or blocked, return an error
-   - If the page doesn't contain a recipe, return an error
-   - If the content is blocked by safety filters, return an error
-   - If the recipe is incomplete, extract what you can
-
-4. **Data Quality**:
-   - Clean up ingredient measurements (standardize units)
-   - Remove redundant step numbering from instructions
-   - Ensure instructions are clear and actionable
-   - Preserve original recipe structure and terminology
-
-## Response Format:
-
-You must respond with valid JSON in one of these formats:
-
-### Success Response:
-\`\`\`json
-{
-  "recipe": {
-    "title": "Recipe Name",
-    "ingredients": [
-      "2 cups all-purpose flour",
-      "1 tsp baking powder",
-      "1/2 cup sugar"
-    ],
-    "steps": [
-      "Preheat oven to 350°F (175°C).",
-      "Mix dry ingredients in a large bowl.",
-      "Add wet ingredients and stir until combined."
-    ],
-    "servings": "Makes 12 servings",
-    "prepTime": "15 minutes",
-    "cookTime": "25 minutes"
-  }
-}
-\`\`\`
-
-### Error Response:
-\`\`\`json
-{
-  "error": {
-    "type": "not-recipe|paywall|url-inaccessible|parsing-failed|content-blocked",
-    "message": "Clear explanation of what went wrong"
-  }
-}
-\`\`\`
-
-## Error Types:
-- **not-recipe**: Page doesn't contain recipe content
-- **paywall**: Content is behind a paywall or subscription
-- **url-inaccessible**: Cannot access the URL (404, 403, etc.)
-- **parsing-failed**: Recipe found but couldn't parse properly
-- **content-blocked**: Content blocked by safety filters
-
-## Quality Guidelines:
-- Ingredients should include quantities and units
-- Steps should be actionable and clear
-- Times should be in readable format ("30 minutes", not "30 min")
-- Servings should indicate what the recipe makes
-- Preserve recipe authenticity and terminology
-- Remove marketing language and keep only recipe content
-
-Remember: Always respond with valid JSON. Do not include any text outside the JSON response.`
+Allowed error types: not-recipe | paywall | url-inaccessible | parsing-failed | content-blocked.`
 
 /**
  * Create a complete prompt for recipe extraction from a URL
@@ -86,10 +21,9 @@ Remember: Always respond with valid JSON. Do not include any text outside the JS
 export function createRecipeExtractionPrompt(url: string): string {
   return `${RECIPE_EXTRACTION_SYSTEM_PROMPT}
 
-## Task:
-Extract the recipe from this URL: ${url}
-
-Please visit the URL and extract the recipe information following the format specified above.`
+Task: Extract a recipe for URL: ${url}
+- If you cannot reliably determine recipe content, return an appropriate error.
+- Respond with JSON only.`
 }
 
 /**
@@ -228,7 +162,7 @@ Or return an error if truly no recipe content exists.`
  */
 export function getRecipeExtractionPrompt(
   url: string, 
-  strategy: 'basic' | 'enhanced' | 'partial' = 'enhanced'
+  strategy: 'basic' | 'enhanced' | 'partial' = 'basic'
 ): string {
   switch (strategy) {
     case 'basic':
@@ -238,6 +172,6 @@ export function getRecipeExtractionPrompt(
     case 'partial':
       return createPartialRecipePrompt(url)
     default:
-      return createEnhancedRecipeExtractionPrompt(url)
+      return createRecipeExtractionPrompt(url)
   }
 }

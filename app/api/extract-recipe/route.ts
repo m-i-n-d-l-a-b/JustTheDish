@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { recipeExtractionService } from "@/lib/recipe-extraction"
 import { validateRecipeUrl } from "@/lib/schemas"
 
+export const runtime = "nodejs"
+
 // Simple in-memory rate limiting (in production, use Redis or similar)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
 

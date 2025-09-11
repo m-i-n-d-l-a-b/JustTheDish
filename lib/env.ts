@@ -8,9 +8,7 @@ const envSchema = z.object({
   // Google Gemini API Configuration
   GOOGLE_API_KEY: z
     .string()
-    .min(1, "Google API key is required")
     .optional()
-    .transform(val => val || "")
     .describe("Google Gemini API key for recipe extraction"),
 
   // Optional Gemini Configuration
@@ -68,12 +66,8 @@ export function getEnv(): z.infer<typeof envSchema> {
   }
 
   try {
-    // TEMPORARY FIX: Add your API key here if .env.local isn't working
-    const TEMP_API_KEY = "REDACTED";
-    
-    
     _env = envSchema.parse({
-      GOOGLE_API_KEY: process.env.GOOGLE_API_KEY || TEMP_API_KEY,
+      GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
       GEMINI_MODEL: process.env.GEMINI_MODEL,
       GEMINI_REQUEST_TIMEOUT: process.env.GEMINI_REQUEST_TIMEOUT,
       GEMINI_MAX_RETRIES: process.env.GEMINI_MAX_RETRIES,

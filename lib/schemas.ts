@@ -227,3 +227,59 @@ export function sanitizeRecipe(recipe: Recipe): Recipe {
     prepTime: recipe.prepTime?.trim() || undefined,
   }
 }
+
+/**
+ * JSON schema (for Gemini structured output) mirroring geminiRecipeResponseSchema
+ * This is used to request strict JSON from the model.
+ */
+export const geminiResponseJsonSchema = {
+  type: "object",
+  properties: {
+    recipe: {
+      type: "object",
+      properties: {
+        title: { type: "string", minLength: 1, maxLength: 200 },
+        ingredients: {
+          type: "array",
+          items: { type: "string", minLength: 1, maxLength: 500 },
+          minItems: 1,
+          maxItems: 50,
+        },
+        steps: {
+          type: "array",
+          items: { type: "string", minLength: 5, maxLength: 2000 },
+          minItems: 1,
+          maxItems: 30,
+        },
+        servings: { type: "string" },
+        cookTime: { type: "string" },
+        prepTime: { type: "string" },
+      },
+      required: ["title", "ingredients", "steps"],
+      additionalProperties: false,
+    },
+    error: {
+      type: "object",
+      properties: {
+        type: {
+          type: "string",
+          enum: [
+            "not-recipe",
+            "paywall",
+            "url-inaccessible",
+            "parsing-failed",
+            "content-blocked",
+          ],
+        },
+        message: { type: "string", minLength: 1 },
+      },
+      required: ["type", "message"],
+      additionalProperties: false,
+    },
+  },
+  additionalProperties: false,
+  oneOf: [
+    { required: ["recipe"] },
+    { required: ["error"] },
+  ],
+} as const
