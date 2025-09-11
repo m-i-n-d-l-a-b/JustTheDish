@@ -108,7 +108,7 @@ export function RecipeDisplay({ recipe, onReset }: RecipeDisplayProps) {
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <CardTitle className="text-2xl md:text-3xl text-balance mb-2">{recipe.title}</CardTitle>
+              <CardTitle className="text-2xl md:text-3xl text-balance mb-2 text-[#1f2937]">{recipe.title}</CardTitle>
               <div className="flex flex-wrap gap-2">
                 {recipe.servings && (
                   <Badge variant="secondary" className="flex items-center gap-1">
@@ -152,8 +152,8 @@ export function RecipeDisplay({ recipe, onReset }: RecipeDisplayProps) {
         {/* Ingredients */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ChefHat className="h-5 w-5 text-primary" />
+            <CardTitle className="flex items-center gap-2 text-[#1f2937]">
+              <ChefHat className="h-5 w-5" />
               Ingredients ({recipe.ingredients.length})
             </CardTitle>
           </CardHeader>
@@ -184,8 +184,8 @@ export function RecipeDisplay({ recipe, onReset }: RecipeDisplayProps) {
         {/* Instructions */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" />
+            <CardTitle className="flex items-center gap-2 text-[#1f2937]">
+              <Clock className="h-5 w-5" />
               Instructions ({recipe.steps.length} steps)
             </CardTitle>
           </CardHeader>
