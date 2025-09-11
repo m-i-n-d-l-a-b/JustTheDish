@@ -55,7 +55,7 @@ interface ExtractionResult {
  * Main recipe extraction service class
  */
 export class RecipeExtractionService {
-  private geminiClient: GeminiClient
+  private geminiClient!: GeminiClient
   private isInitialized: boolean = false
 
   constructor() {
