@@ -107,8 +107,8 @@ export function RecipeDisplay({ recipe, onReset }: RecipeDisplayProps) {
       {/* Recipe Header */}
       <Card>
         <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
+          <div className="flex flex-col md:flex-row items-start gap-4">
+            <div className="w-full md:basis-2/3 min-w-0">
               <CardTitle className="text-2xl md:text-3xl text-balance mb-2 text-[#1f2937]">{recipe.title}</CardTitle>
               <div className="flex flex-wrap gap-2">
                 {recipe.servings && (
@@ -137,16 +137,16 @@ export function RecipeDisplay({ recipe, onReset }: RecipeDisplayProps) {
                 )}
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button onClick={handleDownloadPDF} variant="default" size="sm">
+            <div className="w-full md:basis-1/3 md:ml-auto flex flex-col gap-2 items-stretch mt-3 md:mt-0">
+              <Button onClick={handleDownloadPDF} variant="default" size="sm" className="w-full">
                 <Download className="h-4 w-4 mr-2" />
                 Download PDF
               </Button>
-              <Button onClick={handleCopyRecipe} variant="outline" size="sm" disabled={copied}>
+              <Button onClick={handleCopyRecipe} variant="outline" size="sm" disabled={copied} className="w-full">
                 <Copy className="h-4 w-4 mr-2" />
                 {copied ? "Copied!" : "Copy Recipe"}
               </Button>
-              <Button onClick={onReset} variant="outline" size="sm">
+              <Button onClick={onReset} variant="outline" size="sm" className="w-full">
                 <RotateCcw className="h-4 w-4 mr-2" />
                 New Recipe
               </Button>
