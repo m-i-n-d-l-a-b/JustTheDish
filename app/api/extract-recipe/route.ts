@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { recipeExtractionService } from "@/lib/recipe-extraction"
-import { validateRecipeUrl } from "@/lib/schemas"
+import { groqRecipeExtractionService } from "@/lib/groq-extraction"
+import { extractionApiRequestSchema, validateRecipeUrl } from "@/lib/schemas"
+import { getEnv } from "@/lib/env"
 
 export const runtime = "nodejs"
 
@@ -37,7 +39,19 @@ export async function POST(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") || undefined
   
   try {
-    const { url } = await request.json()
+    const body = await request.json()
+    let url: string
+    let provider: "gemini" | "groq" | undefined
+    try {
+      const parsed = extractionApiRequestSchema.parse(body)
+      url = parsed.url
+      provider = parsed.provider
+    } catch (validationError) {
+      return NextResponse.json(
+        { error: { type: "invalid-url", message: "Please provide a valid URL." } },
+        { status: 400 },
+      )
+    }
 
     // Validate URL input
     if (!url || typeof url !== "string") {
@@ -81,21 +95,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if extraction service is available
-    if (!recipeExtractionService.isReady()) {
+    const env = getEnv()
+    const selectedProvider: "gemini" | "groq" = provider || (env as any).EXTRACTION_PROVIDER || "gemini"
+    const service = selectedProvider === "groq" ? groqRecipeExtractionService : recipeExtractionService
+
+    if (!service.isReady()) {
       return NextResponse.json(
-        {
-          error: {
-            type: "server",
-            message: "Recipe extraction service is temporarily unavailable. Please try again later.",
-          },
-        },
+        { error: { type: "server", message: "Recipe extraction service is temporarily unavailable. Please try again later." } },
         { status: 503 },
       )
     }
 
     // Extract recipe using Gemini API
-    const result = await recipeExtractionService.extractRecipe(url, { requestId })
+    const result = await service.extractRecipe(url, { requestId })
 
     // Handle successful extraction
     if (result.recipe) {

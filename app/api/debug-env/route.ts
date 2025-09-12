@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server"
+import { getEnv } from "@/lib/env"
 
 export async function GET() {
+  const env = getEnv()
   return NextResponse.json({
+    nodeEnv: env.NODE_ENV,
     hasGoogleApiKey: !!process.env.GOOGLE_API_KEY,
-    nodeEnv: process.env.NODE_ENV,
-    allEnvKeys: Object.keys(process.env).filter(key => key.includes('GOOGLE') || key.includes('GEMINI')),
-    // Don't expose the actual key value for security
+    hasGroqApiKey: !!process.env.GROQ_API_KEY,
+    defaultProvider: env.EXTRACTION_PROVIDER,
+    geminiModel: env.GEMINI_MODEL,
+    groqModel: env.GROQ_MODEL,
   })
 }

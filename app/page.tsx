@@ -13,6 +13,7 @@ export interface Recipe {
   servings?: string
   cookTime?: string
   prepTime?: string
+  totalTime?: string
 }
 
 export interface RecipeError {
