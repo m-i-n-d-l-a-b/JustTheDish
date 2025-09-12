@@ -8,6 +8,11 @@ const nextConfig = {
   // Optimize for production
   swcMinify: true,
   
+  experimental: {
+    // Ensure pdfkit loads its bundled AFM data files from node_modules at runtime
+    serverComponentsExternalPackages: ["pdfkit"],
+  },
+  
   // Security headers
   async headers() {
     return [

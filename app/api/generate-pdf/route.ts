@@ -1,8 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server"
-import PDFDocument from "pdfkit"
+// Use Node build to ensure AFM font files resolve correctly at runtime
+import PDFDocument from "pdfkit/js/pdfkit"
 import { validateRecipe } from "@/lib/schemas"
 
 export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,10 +42,12 @@ async function generateRecipePDF(recipe: {
   servings?: string
   cookTime?: string
   prepTime?: string
+  totalTime?: string
 }): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument({ size: "LETTER", margin: 50 })
+      const doc = new PDFDocument({ size: "LETTER", margin: 50, autoFirstPage: false })
+      doc.addPage()
 
       const chunks: Buffer[] = []
       doc.on("data", (chunk: Buffer) => chunks.push(chunk))
@@ -63,6 +67,7 @@ async function generateRecipePDF(recipe: {
       if (recipe.servings) meta.push(`Servings: ${recipe.servings}`)
       if (recipe.prepTime) meta.push(`Prep: ${recipe.prepTime}`)
       if (recipe.cookTime) meta.push(`Cook: ${recipe.cookTime}`)
+      if (recipe.totalTime) meta.push(`Total: ${recipe.totalTime}`)
       if (meta.length) {
         doc.fontSize(12).fillColor("#374151").text(meta.join("   •   "))
         doc.fillColor("#000000")

@@ -61,6 +61,30 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 NODE_ENV=development
 ```
 
+### Groq API Configuration
+
+If you want to use Groq as a provider, add these to your `.env.local`:
+
+```bash
+# Groq API Configuration
+GROQ_API_KEY=your_groq_api_key_here
+
+# Optional Groq settings
+# Example model; adjust to a model available to your Groq account
+GROQ_MODEL=groq/llama-3.3-70b-versatile
+GROQ_REQUEST_TIMEOUT=30000
+GROQ_MAX_RETRIES=2
+GROQ_RETRY_DELAY=1000
+
+# Default provider selection (optional; can be overridden per request)
+EXTRACTION_PROVIDER=groq
+```
+
+**How to get a Groq API Key:**
+1. Sign in to the Groq console and create an API key
+2. Copy the key into `GROQ_API_KEY`
+3. Choose a supported `GROQ_MODEL` for your account
+
 ## Environment Validation
 
 The application automatically validates environment variables on startup using Zod schemas. If any required variables are missing or invalid, you'll see a clear error message explaining what needs to be fixed.

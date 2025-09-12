@@ -29,6 +29,19 @@ export const recipeExtractionRequestSchema = z.object({
 })
 
 /**
+ * Provider selection for extraction API
+ */
+export const extractionProviderSchema = z.enum(["gemini", "groq"]).optional()
+
+/**
+ * Schema for validating API request body to extract a recipe
+ */
+export const extractionApiRequestSchema = z.object({
+  url: recipeExtractionRequestSchema.shape.url,
+  provider: extractionProviderSchema,
+})
+
+/**
  * Schema for validating individual recipe ingredients
  */
 export const ingredientSchema = z
@@ -62,21 +75,20 @@ export const timeStringSchema = z
   .refine(
     (time) => {
       if (!time) return true
-      // Basic validation for time format
+      const t = time.trim()
       const timePattern = new RegExp(
         [
-          // Single or compound duration: "1 hour", "1 hour 15 minutes", optional qualifiers and per-phrases
           '^(?:about\\s+|approx(?:\\.|imately)?\\s+|around\\s+|~\\s*)?\\d+\\s*(?:hour|hr|minute|min|second|sec)s?(?:\\s+\\d+\\s*(?:hour|hr|minute|min|second|sec)s?)?(?:\\s+per\\s+[a-z]+(?:\\s+[a-z]+)*)?$',
-          // Range duration: "10-12 minutes" or with en dash and optional per-phrase
           '^(?:about\\s+|approx(?:\\.|imately)?\\s+|around\\s+|~\\s*)?\\d+\\s*[-–]\\s*\\d+\\s*(?:hour|hr|minute|min|second|sec)s?(?:\\s+per\\s+[a-z]+(?:\\s+[a-z]+)*)?$',
-          // Clock format: "1:30"
-          '^\\d+:\\d{1,2}$'
+          '^\\d+:\\d{1,2}$',
+          // ISO 8601 durations like PT30M, PT1H20M, P1DT2H
+          '^P(?:\\d+W)?(?:\\d+D)?(?:T(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$'
         ].join('|'),
         'i'
       )
-      return timePattern.test(time.trim())
+      return timePattern.test(t)
     },
-    "Time must be in a valid format (e.g., '30 minutes', '1 hour 15 minutes', '10-12 minutes', '1:30')"
+    "Time must be valid (e.g., '30 minutes', '10-12 minutes', '1:30', or ISO 8601 like 'PT30M')"
   )
 
 /**
@@ -129,6 +141,7 @@ export const recipeSchema = z.object({
   servings: servingsSchema,
   cookTime: timeStringSchema,
   prepTime: timeStringSchema,
+  totalTime: timeStringSchema,
 })
 
 /**
@@ -221,9 +234,31 @@ export function sanitizeRecipe(recipe: Recipe): Recipe {
     // Keep steps readable by trimming leading/trailing whitespace only
     steps: recipe.steps.map(step => step.trim()),
     servings: recipe.servings?.trim() || undefined,
-    cookTime: recipe.cookTime?.trim() || undefined,
-    prepTime: recipe.prepTime?.trim() || undefined,
+    cookTime: normalizeTime(recipe.cookTime),
+    prepTime: normalizeTime(recipe.prepTime),
+    totalTime: normalizeTime(recipe.totalTime),
   }
+}
+
+function normalizeTime(value?: string): string | undefined {
+  if (!value) return undefined
+  const trimmed = value.trim()
+  // Humanize ISO 8601 to words
+  try {
+    // Lazy import to avoid circular deps in tests
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { isIso8601Duration, formatIsoDurationToHuman } = require("./utils") as {
+      isIso8601Duration: (v: string) => boolean
+      formatIsoDurationToHuman: (v: string) => string | null
+    }
+    if (isIso8601Duration(trimmed)) {
+      const human = formatIsoDurationToHuman(trimmed)
+      return human || trimmed
+    }
+  } catch {
+    // ignore, fall back to trimmed
+  }
+  return trimmed || undefined
 }
 
 /**
@@ -252,6 +287,7 @@ export const geminiResponseJsonSchema = {
         servings: { type: "string" },
         cookTime: { type: "string" },
         prepTime: { type: "string" },
+        totalTime: { type: "string" },
       },
       required: ["title", "ingredients", "steps"],
       additionalProperties: false,

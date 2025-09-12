@@ -38,6 +38,41 @@ const envSchema = z.object({
     .default("1000")
     .describe("Base delay between retries in milliseconds"),
 
+  // Groq API Configuration (optional until provider is wired)
+  GROQ_API_KEY: z
+    .string()
+    .optional()
+    .describe("Groq API key for recipe extraction"),
+  GROQ_MODEL: z
+    .string()
+    .default("groq/llama-3.3-70b-versatile")
+    .describe("Groq model to use for recipe extraction"),
+  GROQ_REQUEST_TIMEOUT: z
+    .string()
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().min(1000).max(120000))
+    .default("30000")
+    .describe("Groq request timeout in milliseconds (1-120 seconds)"),
+  GROQ_MAX_RETRIES: z
+    .string()
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().min(0).max(5))
+    .default("2")
+    .describe("Groq maximum number of retries for failed requests"),
+  GROQ_RETRY_DELAY: z
+    .string()
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().min(100).max(10000))
+    .default("1000")
+    .describe("Groq base delay between retries in milliseconds"),
+
+  // Groq feature flags
+  GROQ_REPAIR_INGREDIENT_SPACING: z
+    .string()
+    .transform((v) => (String(v ?? "").toLowerCase() === "true"))
+    .default("false")
+    .describe("If true, apply minimal spacing repair on ingredients when obvious concatenation is detected"),
+
   // Next.js Environment
   NODE_ENV: z
     .enum(["development", "production", "test"])
@@ -49,6 +84,12 @@ const envSchema = z.object({
     .url()
     .default("http://localhost:3000")
     .describe("Public URL of the application"),
+
+  // Provider selection (optional; can be overridden per request)
+  EXTRACTION_PROVIDER: z
+    .enum(["gemini", "groq"]) 
+    .default("gemini")
+    .describe("Default extraction provider"),
 })
 
 /**
@@ -72,8 +113,15 @@ export function getEnv(): z.infer<typeof envSchema> {
       GEMINI_REQUEST_TIMEOUT: process.env.GEMINI_REQUEST_TIMEOUT,
       GEMINI_MAX_RETRIES: process.env.GEMINI_MAX_RETRIES,
       GEMINI_RETRY_DELAY: process.env.GEMINI_RETRY_DELAY,
+      GROQ_API_KEY: process.env.GROQ_API_KEY,
+      GROQ_MODEL: process.env.GROQ_MODEL,
+      GROQ_REQUEST_TIMEOUT: process.env.GROQ_REQUEST_TIMEOUT,
+      GROQ_MAX_RETRIES: process.env.GROQ_MAX_RETRIES,
+      GROQ_RETRY_DELAY: process.env.GROQ_RETRY_DELAY,
+      GROQ_REPAIR_INGREDIENT_SPACING: process.env.GROQ_REPAIR_INGREDIENT_SPACING,
       NODE_ENV: process.env.NODE_ENV,
       NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+      EXTRACTION_PROVIDER: process.env.EXTRACTION_PROVIDER,
     })
     return _env
   } catch (error) {

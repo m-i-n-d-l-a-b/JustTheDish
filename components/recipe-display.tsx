@@ -61,6 +61,7 @@ export function RecipeDisplay({ recipe, onReset }: RecipeDisplayProps) {
     if (r.servings) meta.push(`Servings: ${r.servings}`)
     if (r.prepTime) meta.push(`Prep: ${r.prepTime}`)
     if (r.cookTime) meta.push(`Cook: ${r.cookTime}`)
+    if (r.totalTime) meta.push(`Total: ${r.totalTime}`)
 
     const ingredients = r.ingredients.map((ing, i) => `${i + 1}. ${ing}`).join("\n")
     const steps = r.steps.map((st, i) => `${i + 1}. ${st}`).join("\n\n")
@@ -126,6 +127,12 @@ export function RecipeDisplay({ recipe, onReset }: RecipeDisplayProps) {
                   <Badge variant="secondary" className="flex items-center gap-1">
                     <ChefHat className="h-3 w-3" />
                     Cook: {recipe.cookTime}
+                  </Badge>
+                )}
+                {recipe.totalTime && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Total: {recipe.totalTime}
                   </Badge>
                 )}
               </div>

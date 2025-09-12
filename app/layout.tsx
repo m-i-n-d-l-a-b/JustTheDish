@@ -23,7 +23,7 @@ const headingSerif = Merriweather({
 export const metadata: Metadata = {
   title: "Just The Dish",
   description:
-    "Skip the ads and pop-ups. Get straight to the recipe with organized ingredients and easy instructions, every time.",
+    "Skip the blogs, ads and pop-ups. Get straight to the recipe with organized ingredients and easy instructions.",
 };
 
 export default function RootLayout({

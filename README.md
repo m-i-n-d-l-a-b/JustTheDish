@@ -13,7 +13,7 @@ Extract clean, structured recipes from cooking websites. Paste a URL and get a c
 - Next.js App Router (API routes in `app/api/*`)
 - TypeScript, React 19
 - Tailwind CSS, shadcn/ui components
-- Google Gemini via `@google/generative-ai`
+- Google Gemini via `@google/generative-ai`; Groq via `groq-sdk`
 - Zod for validation
 
 ---
@@ -37,6 +37,10 @@ GEMINI_RETRY_DELAY=1000
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NODE_ENV=development
 ```
+# Groq (optional)
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=groq/compound-mini
+EXTRACTION_PROVIDER=groq
 
 3) Run the app
 ```bash
