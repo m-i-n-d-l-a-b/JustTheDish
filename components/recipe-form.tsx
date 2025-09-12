@@ -91,12 +91,7 @@ export function RecipeForm({ onSubmit, disabled }: RecipeFormProps) {
           </Button>
         </form>
 
-        <div hidden className="mt-6 flex flex-wrap items-center gap-2 text-xs text-[#6b7280]">
-          <Badge variant="outline">AllRecipes</Badge>
-          <Badge variant="outline">Food Network</Badge>
-          <Badge variant="outline">Bon Appétit</Badge>
-          <span>+ dozens more</span>
-        </div>
+        
       </CardContent>
     </Card>
   )
