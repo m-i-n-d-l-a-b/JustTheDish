@@ -86,7 +86,7 @@ export function RecipeForm({ onSubmit, disabled }: RecipeFormProps) {
                 Extracting...
               </>
             ) : (
-              "Extract Recipe"
+              "Get Recipe"
             )}
           </Button>
         </form>
