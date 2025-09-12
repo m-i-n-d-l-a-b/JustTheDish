@@ -73,8 +73,8 @@ export default function RecipeSummarizerPage() {
             Just The Dish
           </h1>
           <p className="text-[17px] leading-relaxed text-[#4b5563] max-w-prose mx-auto">
-            Skip the ads and pop-ups. Get straight to the recipe with organized ingredients and easy instructions,
-            every time.
+          Skip the blogs, ads and pop-ups.
+          Get straight to the recipe with organized ingredients and easy instructions.
           </p>
         </header>
 
