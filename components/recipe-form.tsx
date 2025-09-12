@@ -64,7 +64,7 @@ export function RecipeForm({ onSubmit, disabled }: RecipeFormProps) {
               <Link className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="url"
-                placeholder="https://example.com/recipe"
+                placeholder="https://recipes.com/gourmetgoulash"
                 value={url}
                 onChange={handleUrlChange}
                 disabled={disabled}
@@ -83,7 +83,7 @@ export function RecipeForm({ onSubmit, disabled }: RecipeFormProps) {
             {disabled ? (
               <>
                 <Spinner className="h-4 w-4" />
-                Extracting...
+                Almost ready to serve...
               </>
             ) : (
               "Get Recipe"
@@ -91,7 +91,7 @@ export function RecipeForm({ onSubmit, disabled }: RecipeFormProps) {
           </Button>
         </form>
 
-        <div className="mt-6 flex flex-wrap items-center gap-2 text-xs text-[#6b7280]">
+        <div hidden className="mt-6 flex flex-wrap items-center gap-2 text-xs text-[#6b7280]">
           <Badge variant="outline">AllRecipes</Badge>
           <Badge variant="outline">Food Network</Badge>
           <Badge variant="outline">Bon Appétit</Badge>

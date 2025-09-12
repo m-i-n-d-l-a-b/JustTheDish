@@ -1,6 +1,4 @@
 import { type NextRequest, NextResponse } from "next/server"
-// Use Node build to ensure AFM font files resolve correctly at runtime
-import PDFDocument from "pdfkit/js/pdfkit"
 import { validateRecipe } from "@/lib/schemas"
 
 export const runtime = "nodejs"
@@ -44,8 +42,9 @@ async function generateRecipePDF(recipe: {
   prepTime?: string
   totalTime?: string
 }): Promise<ArrayBuffer> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     try {
+      const { default: PDFDocument } = await import("pdfkit")
       const doc = new PDFDocument({ size: "LETTER", margin: 50, autoFirstPage: false })
       doc.addPage()
 
