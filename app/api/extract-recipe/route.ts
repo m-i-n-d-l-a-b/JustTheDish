@@ -3,37 +3,9 @@ import { recipeExtractionService } from "@/lib/recipe-extraction"
 import { groqRecipeExtractionService } from "@/lib/groq-extraction"
 import { extractionApiRequestSchema, validateRecipeUrl } from "@/lib/schemas"
 import { getEnv } from "@/lib/env"
+import { getRateLimitKey, checkRateLimit } from "@/lib/rate-limit"
 
 export const runtime = "nodejs"
-
-// Simple in-memory rate limiting (in production, use Redis or similar)
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
-
-function getRateLimitKey(request: NextRequest): string {
-  const forwarded = request.headers.get("x-forwarded-for")
-  const ip = forwarded ? forwarded.split(",")[0] : request.ip || "unknown"
-  return ip
-}
-
-function checkRateLimit(key: string): boolean {
-  const now = Date.now()
-  const windowMs = 60 * 60 * 1000 // 1 hour
-  const maxRequests = 10
-
-  const current = rateLimitMap.get(key)
-
-  if (!current || now > current.resetTime) {
-    rateLimitMap.set(key, { count: 1, resetTime: now + windowMs })
-    return true
-  }
-
-  if (current.count >= maxRequests) {
-    return false
-  }
-
-  current.count++
-  return true
-}
 
 export async function POST(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") || undefined
@@ -73,7 +45,7 @@ export async function POST(request: NextRequest) {
         {
           error: {
             type: "rate-limit",
-            message: "Rate limit exceeded. You can extract up to 10 recipes per hour. Please try again later.",
+            message: "Rate limit exceeded. You can extract one recipe per minute. Please try again later.",
           },
         },
         { status: 429 },
@@ -96,7 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     const env = getEnv()
-    const selectedProvider: "gemini" | "groq" = provider || (env as any).EXTRACTION_PROVIDER || "gemini"
+    const selectedProvider: "gemini" | "groq" = provider ?? env.EXTRACTION_PROVIDER
     const service = selectedProvider === "groq" ? groqRecipeExtractionService : recipeExtractionService
 
     if (!service.isReady()) {
