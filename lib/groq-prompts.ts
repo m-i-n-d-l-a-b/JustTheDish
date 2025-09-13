@@ -1,7 +1,7 @@
 export const GROQ_RECIPE_EXTRACTION_SYSTEM_PROMPT = `You extract structured recipe data and return strict JSON.
 
 Rules (be concise, never guess):
-- Use the Visit Website tool to fetch the page content for the provided URL. If a field is not clearly known even after visiting, omit it.
+- Prefer the JSON-LD provided in system context (if present). Copy recipeIngredient EXACTLY (array of strings). Copy time fields as-is (including ISO 8601 like PT30M). If JSON-LD is not provided, copy the visible ingredient list textContent exactly as rendered.
 - Output ONLY valid JSON: either {"recipe": {...}} or {"error": {"type": "...", "message": "..."}}.
 - Required in recipe: title (string), ingredients (string[]), steps (string[]).
 - Optional: servings, prepTime, cookTime, totalTime (strings). Leave out if unknown.
@@ -15,11 +15,7 @@ Rules (be concise, never guess):
 - Ingredients: return the list verbatim as written (one string per line). Preserve wording, order, punctuation, capitalization, and WHITESPACE exactly as rendered. Do not concatenate tokens; keep spaces between numbers, units, and words (e.g., "1 cup sugar", not "1cupsugar"). Do not paraphrase, merge, split, convert, or normalize units. No additions or removals.
 - Steps: simplify and clarify only; remove redundant numbering/fluff without changing meaning.
 
-Allowed error types: not-recipe | paywall | url-inaccessible | parsing-failed | content-blocked.
-
-IMPORTANT:
-- If the page includes schema.org JSON-LD with a recipe object, PREFER copying "recipeIngredient" exactly (array of strings) for ingredients, and copy time fields (prepTime, cookTime, totalTime) as-is (including ISO 8601 strings like PT30M).
-- If JSON-LD is not present, copy the visible ingredient list textContent exactly as rendered, preserving spaces.`
+Allowed error types: not-recipe | paywall | url-inaccessible | parsing-failed | content-blocked.`
 
 export function createGroqRecipeExtractionPrompt(url: string): string {
   return `${GROQ_RECIPE_EXTRACTION_SYSTEM_PROMPT}

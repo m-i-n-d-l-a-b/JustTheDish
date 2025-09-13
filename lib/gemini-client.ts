@@ -248,9 +248,14 @@ export class GeminiClient {
       const result = await this.genAI.models.generateContent({
         model: env.GEMINI_MODEL,
         contents: [prompt],
-        config: {
-          tools: [{ urlContext: {} }],
+        // Enable structured JSON output and allow the model to fetch page content via URL Context
+        generationConfig: {
+          response_mime_type: "application/json",
+          // Mirror our Zod schema to guarantee structure
+          response_schema: geminiResponseJsonSchema as any,
+          temperature: 0,
         },
+        tools: [{ urlContext: {} }],
       })
 
       const text = (result as { text?: string }).text

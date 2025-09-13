@@ -150,7 +150,12 @@ export class GroqRecipeExtractionService {
 
     try {
       const validatedUrl = validateRecipeUrl(url)
-      const prompt = createGroqRecipeExtractionPrompt(validatedUrl)
+      // Prefetch lightweight JSON-LD (if present) to ground ingredients/times exactly
+      const jsonLd = await fetchRecipeJsonLd(validatedUrl)
+      const prompt = appendJsonLdToSystemPrompt(
+        createGroqRecipeExtractionPrompt(validatedUrl),
+        jsonLd
+      )
       const response = await this.client.chatCompletionsCreate({
         messages: [
           { role: "system", content: prompt },
@@ -266,6 +271,91 @@ function repairIngredientSpacing(ingredients: string[]): string[] {
 }
 
 export const groqRecipeExtractionService = new GroqRecipeExtractionService()
+
+// --- Internal helpers to lightly ground the model with page JSON-LD ---
+
+async function fetchRecipeJsonLd(url: string): Promise<unknown | null> {
+  try {
+    const env = getEnv()
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), env.GROQ_REQUEST_TIMEOUT)
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        "User-Agent": "just-the-dish/recipe-extraction (+github.com)",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      redirect: "follow",
+      signal: controller.signal,
+    })
+    clearTimeout(timeoutId)
+    if (!res.ok) return null
+    const html = await res.text()
+    const scripts = Array.from(html.matchAll(/<script[^>]*type=["']application\/(?:ld\+)?json["'][^>]*>([\s\S]*?)<\/script>/gi))
+    for (const match of scripts) {
+      const raw = match[1].trim()
+      try {
+        const parsed = JSON.parse(sanitizePotentiallyCommentedJson(raw))
+        const candidate = findRecipeObjectInJsonLd(parsed)
+        if (candidate) return candidate
+      } catch {
+        // ignore malformed blocks
+      }
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+function sanitizePotentiallyCommentedJson(text: string): string {
+  // Remove HTML entities and stray tags inside JSON blocks, and strip BOM
+  return text
+    .replace(/^\uFEFF/, "")
+    .replace(/&quot;/g, '"')
+    .replace(/<!--([\s\S]*?)-->/g, "")
+}
+
+function findRecipeObjectInJsonLd(json: unknown): any | null {
+  // JSON-LD may be an object, an array, or have @graph
+  const candidates: any[] = []
+  const pushIfRecipe = (node: any) => {
+    if (!node || typeof node !== "object") return
+    const type = (node["@type"] ?? node.type)
+    if (typeof type === "string" && /Recipe/i.test(type)) candidates.push(node)
+    if (Array.isArray(type) && type.some((t) => /Recipe/i.test(String(t)))) candidates.push(node)
+  }
+  const walk = (node: any) => {
+    if (!node || typeof node !== "object") return
+    pushIfRecipe(node)
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item)
+    } else {
+      if (Array.isArray(node["@graph"])) walk(node["@graph"]) 
+      for (const key of Object.keys(node)) {
+        const val = (node as any)[key]
+        if (val && typeof val === "object") walk(val)
+      }
+    }
+  }
+  walk(json)
+  // Prefer nodes containing recipeIngredient
+  const withIngredients = candidates.find((c) => Array.isArray(c.recipeIngredient) && c.recipeIngredient.length > 0)
+  return withIngredients || candidates[0] || null
+}
+
+function appendJsonLdToSystemPrompt(basePrompt: string, jsonLd: unknown | null): string {
+  if (!jsonLd) return basePrompt
+  const safe = JSON.stringify(jsonLd, null, 2)
+  return `${basePrompt}
+
+CONTEXT (PRIMARY SOURCE):
+- Use the JSON-LD below as the authoritative source. Copy recipeIngredient EXACTLY (array of strings). Keep times as-is. If instructions are objects (HowToStep), convert to plain text steps preserving meaning.
+- Do not guess or substitute ingredients not present in JSON-LD.
+
+JSON_LD:
+${safe}`
+}
 
 
 
