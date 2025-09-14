@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid"
 import { GroqClient } from "./groq-client"
-import { createGroqRecipeExtractionPrompt, createGroqRecipeValidationPrompt, createGroqRecipeTimesValidationPrompt } from "./groq-prompts"
+import { createGroqRecipeExtractionPrompt, createGroqRecipeValidationPrompt, createGroqRecipeTimesValidationPrompt, createGroqRecipeStepsSimplificationPrompt } from "./groq-prompts"
 import { parseGroqRecipeResponse } from "./groq-response"
 import { 
   validateRecipeUrl,
@@ -215,6 +215,25 @@ export class GroqRecipeExtractionService {
             const timesParsed: GeminiRecipeResponse = parseGroqRecipeResponse(timesResponse.text)
             if (timesParsed.recipe) {
               const timesFixed = sanitizeRecipe(timesParsed.recipe)
+              // Steps simplification pass: rewrite ONLY steps to be concise, preserving order and meaning
+              try {
+                const stepsPrompt = createGroqRecipeStepsSimplificationPrompt(JSON.stringify({ recipe: timesFixed }))
+                const stepsResponse = await this.client.chatCompletionsCreate({
+                  messages: [
+                    { role: "system", content: stepsPrompt },
+                    { role: "user", content: `Rewrite steps only. Keep order and meaning. Return JSON only.` },
+                  ],
+                  userAgent: "just-the-dish/recipe-extraction-simplify-steps",
+                })
+                const stepsParsed: GeminiRecipeResponse = parseGroqRecipeResponse(stepsResponse.text)
+                if (stepsParsed.recipe) {
+                  const stepsFixed = sanitizeRecipe(stepsParsed.recipe)
+                  this.log(metadata, true)
+                  return { recipe: stepsFixed, metadata }
+                }
+              } catch {
+                // ignore and return timesFixed
+              }
               this.log(metadata, true)
               return { recipe: timesFixed, metadata }
             }
@@ -223,6 +242,25 @@ export class GroqRecipeExtractionService {
           // ignore and use first pass
         }
 
+        // Steps simplification pass when no times fix was applied
+        try {
+          const stepsPrompt = createGroqRecipeStepsSimplificationPrompt(JSON.stringify({ recipe: firstPass }))
+          const stepsResponse = await this.client.chatCompletionsCreate({
+            messages: [
+              { role: "system", content: stepsPrompt },
+              { role: "user", content: `Rewrite steps only. Keep order and meaning. Return JSON only.` },
+            ],
+            userAgent: "just-the-dish/recipe-extraction-simplify-steps",
+          })
+          const stepsParsed: GeminiRecipeResponse = parseGroqRecipeResponse(stepsResponse.text)
+          if (stepsParsed.recipe) {
+            const stepsFixed = sanitizeRecipe(stepsParsed.recipe)
+            this.log(metadata, true)
+            return { recipe: stepsFixed, metadata }
+          }
+        } catch {
+          // ignore
+        }
         this.log(metadata, true)
         return { recipe: firstPass, metadata }
       }

@@ -61,5 +61,21 @@ Rules:
 Return JSON only.`
 }
 
+export function createGroqRecipeStepsSimplificationPrompt(extractedRecipe: string): string {
+  return `Rewrite ONLY the steps in this recipe JSON to be concise while preserving order and meaning.
+
+JSON:
+${extractedRecipe}
+
+Rules:
+- Do NOT change title, ingredients, or any time fields.
+- Keep the same number of steps and the same order.
+- Use clear, direct, imperative sentences; remove filler and redundant phrasing.
+- Combine trivial fragments; avoid over-explaining obvious actions.
+- Keep measurements and key actions intact.
+
+Return JSON only.`
+}
+
 
 

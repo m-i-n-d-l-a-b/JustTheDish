@@ -68,7 +68,7 @@ export function RecipeForm({ onSubmit, disabled }: RecipeFormProps) {
                 value={url}
                 onChange={handleUrlChange}
                 disabled={disabled}
-                className={`pl-10 ${urlError ? "border-destructive" : ""}`}
+                className={`pl-10 placeholder:text-gray-400 ${urlError ? "border-destructive" : ""}`}
                 aria-describedby={urlError ? "url-error" : undefined}
               />
             </div>

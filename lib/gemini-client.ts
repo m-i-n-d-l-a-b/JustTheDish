@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai"
 import { getEnv } from "./env"
-import { geminiErrorSchema, geminiResponseJsonSchema } from "./schemas"
+import { geminiErrorSchema } from "./schemas"
 
 /**
  * Custom error class for Gemini API errors
@@ -248,14 +248,11 @@ export class GeminiClient {
       const result = await this.genAI.models.generateContent({
         model: env.GEMINI_MODEL,
         contents: [prompt],
-        // Enable structured JSON output and allow the model to fetch page content via URL Context
-        generationConfig: {
-          response_mime_type: "application/json",
-          // Mirror our Zod schema to guarantee structure
-          response_schema: geminiResponseJsonSchema as any,
+        // Allow the model to fetch page content via URL Context
+        config: {
+          tools: [{ urlContext: {} }],
           temperature: 0,
         },
-        tools: [{ urlContext: {} }],
       })
 
       const text = (result as { text?: string }).text
