@@ -30,14 +30,23 @@ export function addCorsHeaders(
   requestOrigin: string | null
 ): NextResponse {
   const allowedOrigins = getAllowedOrigins()
-  const origin = isOriginAllowed(requestOrigin, allowedOrigins) && requestOrigin ? requestOrigin : (allowedOrigins[0] ?? "*")
-
-  if (origin !== "*") {
-    response.headers.set("Access-Control-Allow-Origin", origin)
+  
+  // If no origin header is present, this is likely a same-origin or non-browser request.
+  // For same-origin requests, CORS headers aren't needed, but we can set a wildcard
+  // without credentials for compatibility. For non-browser requests that need CORS,
+  // we use * without credentials (credentials require a specific origin).
+  if (!requestOrigin) {
+    response.headers.set("Access-Control-Allow-Origin", "*")
+    // Explicitly do NOT set Access-Control-Allow-Credentials for requests without origin
+  } else if (isOriginAllowed(requestOrigin, allowedOrigins)) {
+    // For requests with an origin header, check if it's allowed
+    response.headers.set("Access-Control-Allow-Origin", requestOrigin)
     response.headers.set("Access-Control-Allow-Credentials", "true")
-  } else {
+  } else if (allowedOrigins.includes("*")) {
+    // Wildcard is allowed, but cannot use credentials with wildcard
     response.headers.set("Access-Control-Allow-Origin", "*")
   }
+  // If origin is not allowed and no wildcard, don't set CORS headers (request should be rejected)
 
   response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
   response.headers.set(
