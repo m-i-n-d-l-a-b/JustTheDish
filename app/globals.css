@@ -123,10 +123,13 @@
   }
   body {
     @apply bg-background text-foreground font-sans text-base leading-relaxed;
-    background-image: radial-gradient(circle at 50% 25%, hsl(var(--background)) 0%, hsl(var(--muted)) 100%),
+    background-image:
+      radial-gradient(circle at 50% 25%, hsl(var(--background)) 0%, hsl(var(--muted)) 100%),
       url("/grain.svg");
     background-repeat: no-repeat, repeat;
-    background-size: cover, 200px 200px;
+    background-size:
+      cover,
+      200px 200px;
   }
   h1 {
     font-family: var(--font-serif);

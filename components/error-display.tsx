@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, RefreshCw, ExternalLink } from "lucide-react"
-import type { RecipeError } from "@/app/page"
+import type { RecipeError } from "@/lib/schemas"
 
 interface ErrorDisplayProps {
   error: RecipeError

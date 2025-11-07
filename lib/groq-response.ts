@@ -1,4 +1,32 @@
-import { validateGeminiResponse } from "./schemas"
+import { validateRecipeExtractionResponse } from "./schemas"
+
+/**
+ * Type guard to check if a value is a record (object with string keys)
+ */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+/**
+ * Type guard to check if parsed response has a recipe property
+ */
+function hasRecipeProperty(parsed: unknown): parsed is { recipe: unknown } & Record<string, unknown> {
+  return isRecord(parsed) && "recipe" in parsed
+}
+
+/**
+ * Type guard to check if recipe has steps array
+ */
+function hasStepsArray(recipe: unknown): recipe is { steps: unknown[] } & Record<string, unknown> {
+  return isRecord(recipe) && "steps" in recipe && Array.isArray(recipe.steps)
+}
+
+/**
+ * Type guard to check if recipe object exists and is a record
+ */
+function isRecipeRecord(recipe: unknown): recipe is Record<string, unknown> {
+  return isRecord(recipe)
+}
 
 export function parseGroqRecipeResponse(responseText: string) {
   try {
@@ -24,24 +52,24 @@ export function parseGroqRecipeResponse(responseText: string) {
     }
 
     // Normalize steps if objects returned; do NOT modify ingredients
-    if (
-      parsed && typeof parsed === "object" &&
-      "recipe" in (parsed as any) &&
-      (parsed as any).recipe &&
-      Array.isArray((parsed as any).recipe.steps)
-    ) {
-      const steps = (parsed as any).recipe.steps
+    if (hasRecipeProperty(parsed) && parsed.recipe && hasStepsArray(parsed.recipe)) {
+      const steps = parsed.recipe.steps
       if (steps.length > 0 && typeof steps[0] === "object" && steps[0] !== null) {
-        ;(parsed as any).recipe.steps = steps.map((s: any) => typeof s === "string" ? s : (typeof s?.step === "string" ? s.step : JSON.stringify(s)))
+        parsed.recipe.steps = steps.map((s: unknown) => {
+          if (typeof s === "string") {
+            return s
+          }
+          if (isRecord(s) && typeof s.step === "string") {
+            return s.step
+          }
+          return JSON.stringify(s)
+        })
       }
     }
 
     // Coerce null optional fields to undefined so schema optional() passes
-    if (
-      parsed && typeof parsed === "object" &&
-      "recipe" in (parsed as any) && (parsed as any).recipe
-    ) {
-      const r = (parsed as any).recipe
+    if (hasRecipeProperty(parsed) && parsed.recipe && isRecipeRecord(parsed.recipe)) {
+      const r = parsed.recipe
       if (r && (r.servings === null || r.servings === "null")) delete r.servings
       if (r && (r.prepTime === null || r.prepTime === "null")) delete r.prepTime
       if (r && (r.cookTime === null || r.cookTime === "null")) delete r.cookTime
@@ -104,7 +132,7 @@ export function parseGroqRecipeResponse(responseText: string) {
       }
     }
 
-    return validateGeminiResponse(parsed)
+    return validateRecipeExtractionResponse(parsed)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     throw new Error(`Failed to parse Groq response: ${message}`)

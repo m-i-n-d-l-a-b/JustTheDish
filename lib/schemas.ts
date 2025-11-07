@@ -1,11 +1,55 @@
 import { z } from "zod"
 
 /**
+ * Check if an IP address is in a private range
+ */
+function isPrivateIP(ip: string): boolean {
+  // IPv4 private ranges
+  if (/^10\./.test(ip)) return true
+  if (/^192\.168\./.test(ip)) return true
+  if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip)) return true
+  if (/^127\./.test(ip)) return true
+  if (/^169\.254\./.test(ip)) return true // Link-local
+  if (ip === "::1" || ip === "localhost") return true
+  return false
+}
+
+/**
+ * Extract hostname from URL and check if it's a private/local address
+ */
+function isPrivateOrLocalhost(url: string): boolean {
+  try {
+    const urlObj = new URL(url)
+    const hostname = urlObj.hostname.toLowerCase()
+    
+    // Check for localhost variants
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") {
+      return true
+    }
+    
+    // Check for private IP ranges
+    if (isPrivateIP(hostname)) {
+      return true
+    }
+    
+    // Check for .local domains
+    if (hostname.endsWith(".local")) {
+      return true
+    }
+    
+    return false
+  } catch {
+    return false
+  }
+}
+
+/**
  * Schema for validating recipe extraction request input
  */
 export const recipeExtractionRequestSchema = z.object({
   url: z
     .string()
+    .max(2048, "URL is too long (maximum 2048 characters)")
     .url("Must be a valid URL")
     .refine(
       (url) => {
@@ -19,26 +63,16 @@ export const recipeExtractionRequestSchema = z.object({
       "URL must use HTTP or HTTPS protocol"
     )
     .refine(
-      (url) => {
-        // Basic validation to prevent obvious malicious URLs
-        const lowerUrl = url.toLowerCase()
-        return !lowerUrl.includes("localhost") && !lowerUrl.includes("127.0.0.1")
-      },
-      "URL cannot point to localhost or internal addresses"
+      (url) => !isPrivateOrLocalhost(url),
+      "URL cannot point to localhost or private/internal addresses"
     ),
 })
-
-/**
- * Provider selection for extraction API
- */
-export const extractionProviderSchema = z.enum(["gemini", "groq"]).optional()
 
 /**
  * Schema for validating API request body to extract a recipe
  */
 export const extractionApiRequestSchema = z.object({
   url: recipeExtractionRequestSchema.shape.url,
-  provider: extractionProviderSchema,
 })
 
 /**
@@ -145,9 +179,9 @@ export const recipeSchema = z.object({
 })
 
 /**
- * Schema for Gemini API response validation
+ * Schema for recipe extraction API response validation
  */
-export const geminiRecipeResponseSchema = z.object({
+export const recipeExtractionResponseSchema = z.object({
   recipe: recipeSchema.optional(),
   error: z.object({
     type: z.enum([
@@ -165,18 +199,6 @@ export const geminiRecipeResponseSchema = z.object({
 )
 
 /**
- * Schema for validating Gemini API error responses
- */
-export const geminiErrorSchema = z.object({
-  error: z.object({
-    code: z.number().optional(),
-    message: z.string(),
-    status: z.string().optional(),
-    details: z.array(z.unknown()).optional(),
-  }),
-})
-
-/**
  * Schema for logging and monitoring data
  */
 export const recipeExtractionLogSchema = z.object({
@@ -192,12 +214,19 @@ export const recipeExtractionLogSchema = z.object({
 })
 
 /**
+ * Recipe error type matching all possible error types from the API
+ */
+export type RecipeError = {
+  type: "invalid-url" | "not-recipe" | "paywall" | "network" | "rate-limit" | "server" | "url-inaccessible" | "parsing-failed" | "content-blocked" | "ai-unavailable" | "quota-exceeded"
+  message: string
+}
+
+/**
  * Type definitions derived from schemas
  */
 export type RecipeExtractionRequest = z.infer<typeof recipeExtractionRequestSchema>
 export type Recipe = z.infer<typeof recipeSchema>
-export type GeminiRecipeResponse = z.infer<typeof geminiRecipeResponseSchema>
-export type GeminiError = z.infer<typeof geminiErrorSchema>
+export type RecipeExtractionResponse = z.infer<typeof recipeExtractionResponseSchema>
 export type RecipeExtractionLog = z.infer<typeof recipeExtractionLogSchema>
 
 /**
@@ -208,10 +237,10 @@ export function validateRecipe(data: unknown): Recipe {
 }
 
 /**
- * Utility function to safely parse and validate Gemini response
+ * Utility function to safely parse and validate recipe extraction response
  */
-export function validateGeminiResponse(data: unknown): GeminiRecipeResponse {
-  return geminiRecipeResponseSchema.parse(data)
+export function validateRecipeExtractionResponse(data: unknown): RecipeExtractionResponse {
+  return recipeExtractionResponseSchema.parse(data)
 }
 
 /**
@@ -262,10 +291,10 @@ function normalizeTime(value?: string): string | undefined {
 }
 
 /**
- * JSON schema (for Gemini structured output) mirroring geminiRecipeResponseSchema
+ * JSON schema for recipe extraction response (structured output)
  * This is used to request strict JSON from the model.
  */
-export const geminiResponseJsonSchema = {
+export const recipeExtractionResponseJsonSchema = {
   type: "object",
   properties: {
     recipe: {

@@ -3,6 +3,41 @@ import { GroqError, GroqRateLimitError, GroqQuotaError, parseGroqError } from ".
 import Groq from "groq-sdk"
 import { logger } from "./logger"
 
+/**
+ * Groq SDK chat completion message structure
+ */
+interface GroqChatMessage {
+  role: "system" | "user" | "assistant"
+  content: string | null
+  reasoning?: string
+  executed_tools?: unknown[]
+}
+
+/**
+ * Groq SDK chat completion choice structure
+ */
+interface GroqChatChoice {
+  index: number
+  message: GroqChatMessage
+  finish_reason?: string
+}
+
+/**
+ * Groq SDK chat completion response structure
+ */
+interface GroqChatCompletionResponse {
+  id: string
+  object: string
+  created: number
+  model: string
+  choices: GroqChatChoice[]
+  usage?: {
+    prompt_tokens: number
+    completion_tokens: number
+    total_tokens: number
+  }
+}
+
 function addJitter(delay: number, jitterFactor: number = 0.1): number {
   const jitter = delay * jitterFactor * Math.random()
   return delay + jitter
@@ -96,11 +131,17 @@ export class GroqClient {
         messages: params.messages,
         temperature: 0,
         // headers handled via defaultHeaders in client
-      } as any)
-      const message = (res as any)?.choices?.[0]?.message
-      const text: string = message?.content ?? ""
+      })
+      const typedRes = res as unknown as GroqChatCompletionResponse
+      const firstChoice = typedRes.choices?.[0]
+      if (!firstChoice) {
+        throw new Error("No choices in Groq response")
+      }
+      const message = firstChoice.message
+      const content = message.content
+      const text: string = typeof content === "string" ? content : ""
       if (!text) throw new Error("Empty response received from Groq")
-      return { text, reasoning: message?.reasoning, executed_tools: message?.executed_tools }
+      return { text, reasoning: message.reasoning, executed_tools: message.executed_tools }
     }
     return this.withRetry(op, "Groq chat completion")
   }

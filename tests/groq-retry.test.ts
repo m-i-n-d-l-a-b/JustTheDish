@@ -13,11 +13,6 @@ describe("GroqClient retries", () => {
       GROQ_MODEL: "groq/compound-mini",
       NODE_ENV: "test",
       NEXT_PUBLIC_APP_URL: "http://localhost:3000",
-      GEMINI_MODEL: "gemini-2.0-flash-exp",
-      GEMINI_REQUEST_TIMEOUT: 30000,
-      GEMINI_MAX_RETRIES: 2,
-      GEMINI_RETRY_DELAY: 1000,
-      EXTRACTION_PROVIDER: "groq",
     } as any)
 
     const originalChat = (Groq as any).prototype.chat

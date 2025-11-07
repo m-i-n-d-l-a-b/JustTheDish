@@ -5,21 +5,7 @@ import { RecipeForm } from "@/components/recipe-form"
 import { RecipeDisplay } from "@/components/recipe-display"
 import { ErrorDisplay } from "@/components/error-display"
 import { LoadingDisplay } from "@/components/loading-display"
-
-export interface Recipe {
-  title: string
-  ingredients: string[]
-  steps: string[]
-  servings?: string
-  cookTime?: string
-  prepTime?: string
-  totalTime?: string
-}
-
-export interface RecipeError {
-  type: "invalid-url" | "not-recipe" | "paywall" | "network" | "rate-limit" | "server" | "url-inaccessible" | "parsing-failed" | "content-blocked" | "ai-unavailable" | "quota-exceeded"
-  message: string
-}
+import type { Recipe, RecipeError } from "@/lib/schemas"
 
 export default function RecipeSummarizerPage() {
   const [recipe, setRecipe] = useState<Recipe | null>(null)

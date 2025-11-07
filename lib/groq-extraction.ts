@@ -6,7 +6,7 @@ import {
   validateRecipeUrl,
   sanitizeRecipe,
   type Recipe,
-  type GeminiRecipeResponse,
+  type RecipeExtractionResponse,
   type RecipeExtractionLog,
 } from "./schemas"
 import { getEnv } from "./env"
@@ -166,7 +166,7 @@ export class GroqRecipeExtractionService {
         userAgent: "just-the-dish/recipe-extraction",
       })
 
-      const parsed: GeminiRecipeResponse = parseGroqRecipeResponse(response.text)
+      const parsed: RecipeExtractionResponse = parseGroqRecipeResponse(response.text)
       const metadata = this.createMetadata(requestId, validatedUrl, start)
 
       if (parsed.recipe) {
@@ -183,7 +183,7 @@ export class GroqRecipeExtractionService {
               ],
               userAgent: "just-the-dish/recipe-extraction-validate",
             })
-            const reparsed: GeminiRecipeResponse = parseGroqRecipeResponse(validationResponse.text)
+            const reparsed: RecipeExtractionResponse = parseGroqRecipeResponse(validationResponse.text)
             if (reparsed.recipe) {
               const secondPass = sanitizeRecipe(reparsed.recipe)
               // Optional minimal, deterministic repair: insert a space between digits and letters when missing
@@ -213,7 +213,7 @@ export class GroqRecipeExtractionService {
               userAgent: "just-the-dish/recipe-extraction-validate-times",
               requestId,
             })
-            const timesParsed: GeminiRecipeResponse = parseGroqRecipeResponse(timesResponse.text)
+            const timesParsed: RecipeExtractionResponse = parseGroqRecipeResponse(timesResponse.text)
             if (timesParsed.recipe) {
               const timesFixed = sanitizeRecipe(timesParsed.recipe)
               // Steps simplification pass: rewrite ONLY steps to be concise, preserving order and meaning
@@ -226,7 +226,7 @@ export class GroqRecipeExtractionService {
                   ],
                   userAgent: "just-the-dish/recipe-extraction-simplify-steps",
                 })
-                const stepsParsed: GeminiRecipeResponse = parseGroqRecipeResponse(stepsResponse.text)
+                const stepsParsed: RecipeExtractionResponse = parseGroqRecipeResponse(stepsResponse.text)
                 if (stepsParsed.recipe) {
                   const stepsFixed = sanitizeRecipe(stepsParsed.recipe)
                   this.log(metadata, true)
@@ -253,7 +253,7 @@ export class GroqRecipeExtractionService {
             ],
             userAgent: "just-the-dish/recipe-extraction-simplify-steps",
           })
-          const stepsParsed: GeminiRecipeResponse = parseGroqRecipeResponse(stepsResponse.text)
+          const stepsParsed: RecipeExtractionResponse = parseGroqRecipeResponse(stepsResponse.text)
           if (stepsParsed.recipe) {
             const stepsFixed = sanitizeRecipe(stepsParsed.recipe)
             this.log(metadata, true)
@@ -332,7 +332,8 @@ async function fetchRecipeJsonLd(url: string): Promise<unknown | null> {
     const html = await res.text()
     const scripts = Array.from(html.matchAll(/<script[^>]*type=["']application\/(?:ld\+)?json["'][^>]*>([\s\S]*?)<\/script>/gi))
     for (const match of scripts) {
-      const raw = match[1].trim()
+      const raw = match[1]?.trim()
+      if (!raw) continue
       try {
         const parsed = JSON.parse(sanitizePotentiallyCommentedJson(raw))
         const candidate = findRecipeObjectInJsonLd(parsed)
@@ -355,32 +356,69 @@ function sanitizePotentiallyCommentedJson(text: string): string {
     .replace(/<!--([\s\S]*?)-->/g, "")
 }
 
-function findRecipeObjectInJsonLd(json: unknown): any | null {
-  // JSON-LD may be an object, an array, or have @graph
-  const candidates: any[] = []
-  const pushIfRecipe = (node: any) => {
-    if (!node || typeof node !== "object") return
-    const type = (node["@type"] ?? node.type)
-    if (typeof type === "string" && /Recipe/i.test(type)) candidates.push(node)
-    if (Array.isArray(type) && type.some((t) => /Recipe/i.test(String(t)))) candidates.push(node)
+/**
+ * JSON-LD node structure that may contain recipe data
+ */
+interface JsonLdNode extends Record<string, unknown> {
+  "@type"?: string | string[]
+  type?: string | string[]
+  "@graph"?: JsonLdNode[]
+  recipeIngredient?: unknown[]
+}
+
+/**
+ * Type guard to check if a value is a JSON-LD node
+ */
+function isJsonLdNode(value: unknown): value is JsonLdNode {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+/**
+ * Type guard to check if a node is a Recipe type
+ */
+function isRecipeType(node: JsonLdNode): boolean {
+  const type = node["@type"] ?? node.type
+  if (typeof type === "string" && /Recipe/i.test(type)) {
+    return true
   }
-  const walk = (node: any) => {
+  if (Array.isArray(type) && type.some((t) => /Recipe/i.test(String(t)))) {
+    return true
+  }
+  return false
+}
+
+function findRecipeObjectInJsonLd(json: unknown): JsonLdNode | null {
+  // JSON-LD may be an object, an array, or have @graph
+  const candidates: JsonLdNode[] = []
+  const pushIfRecipe = (node: unknown): void => {
+    if (!isJsonLdNode(node)) return
+    if (isRecipeType(node)) {
+      candidates.push(node)
+    }
+  }
+  const walk = (node: unknown): void => {
     if (!node || typeof node !== "object") return
     pushIfRecipe(node)
     if (Array.isArray(node)) {
-      for (const item of node) walk(item)
-    } else {
-      if (Array.isArray(node["@graph"])) walk(node["@graph"]) 
+      for (const item of node) {
+        walk(item)
+      }
+    } else if (isJsonLdNode(node)) {
+      if (Array.isArray(node["@graph"])) {
+        walk(node["@graph"])
+      }
       for (const key of Object.keys(node)) {
-        const val = (node as any)[key]
-        if (val && typeof val === "object") walk(val)
+        const val = node[key]
+        if (val && typeof val === "object") {
+          walk(val)
+        }
       }
     }
   }
   walk(json)
   // Prefer nodes containing recipeIngredient
   const withIngredients = candidates.find((c) => Array.isArray(c.recipeIngredient) && c.recipeIngredient.length > 0)
-  return withIngredients || candidates[0] || null
+  return withIngredients ?? candidates[0] ?? null
 }
 
 function appendJsonLdToSystemPrompt(basePrompt: string, jsonLd: unknown | null): string {

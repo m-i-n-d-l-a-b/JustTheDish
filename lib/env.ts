@@ -6,40 +6,7 @@ import { logger } from "./logger"
  * Ensures all required environment variables are present and valid
  */
 const envSchema = z.object({
-  // Google Gemini API Configuration
-  GOOGLE_API_KEY: z
-    .string()
-    .optional()
-    .describe("Google Gemini API key for recipe extraction"),
-
-  // Optional Gemini Configuration
-  GEMINI_MODEL: z
-    .string()
-    .default("gemini-2.0-flash-exp")
-    .describe("Gemini model to use for recipe extraction"),
-
-  GEMINI_REQUEST_TIMEOUT: z
-    .string()
-    .transform((val) => parseInt(val, 10))
-    .pipe(z.number().min(1000).max(120000))
-    .default("30000")
-    .describe("Request timeout in milliseconds (1-120 seconds)"),
-
-  GEMINI_MAX_RETRIES: z
-    .string()
-    .transform((val) => parseInt(val, 10))
-    .pipe(z.number().min(0).max(5))
-    .default("2")
-    .describe("Maximum number of retries for failed requests"),
-
-  GEMINI_RETRY_DELAY: z
-    .string()
-    .transform((val) => parseInt(val, 10))
-    .pipe(z.number().min(100).max(10000))
-    .default("1000")
-    .describe("Base delay between retries in milliseconds"),
-
-  // Groq API Configuration (optional until provider is wired)
+  // Groq API Configuration
   GROQ_API_KEY: z
     .string()
     .optional()
@@ -86,11 +53,12 @@ const envSchema = z.object({
     .default("http://localhost:3000")
     .describe("Public URL of the application"),
 
-  // Provider selection (optional; can be overridden per request)
-  EXTRACTION_PROVIDER: z
-    .enum(["gemini", "groq"]) 
-    .default("gemini")
-    .describe("Default extraction provider"),
+  // CORS Configuration
+  ALLOWED_ORIGINS: z
+    .string()
+    .default("*")
+    .describe("Comma-separated list of allowed CORS origins, or * for all"),
+
 })
 
 /**
@@ -109,11 +77,6 @@ export function getEnv(): z.infer<typeof envSchema> {
 
   try {
     _env = envSchema.parse({
-      GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
-      GEMINI_MODEL: process.env.GEMINI_MODEL,
-      GEMINI_REQUEST_TIMEOUT: process.env.GEMINI_REQUEST_TIMEOUT,
-      GEMINI_MAX_RETRIES: process.env.GEMINI_MAX_RETRIES,
-      GEMINI_RETRY_DELAY: process.env.GEMINI_RETRY_DELAY,
       GROQ_API_KEY: process.env.GROQ_API_KEY,
       GROQ_MODEL: process.env.GROQ_MODEL,
       GROQ_REQUEST_TIMEOUT: process.env.GROQ_REQUEST_TIMEOUT,
@@ -122,7 +85,7 @@ export function getEnv(): z.infer<typeof envSchema> {
       GROQ_REPAIR_INGREDIENT_SPACING: process.env.GROQ_REPAIR_INGREDIENT_SPACING,
       NODE_ENV: process.env.NODE_ENV,
       NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-      EXTRACTION_PROVIDER: process.env.EXTRACTION_PROVIDER,
+      ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
     })
     return _env
   } catch (error) {
@@ -166,9 +129,9 @@ export function validateEnvironment(): void {
     logger.log(`Environment validated for ${envVars.NODE_ENV} mode`)
     
     if (envVars.NODE_ENV === "development") {
-      logger.log(`Using Gemini model: ${envVars.GEMINI_MODEL}`)
-      logger.log(`Request timeout: ${envVars.GEMINI_REQUEST_TIMEOUT}ms`)
-      logger.log(`Max retries: ${envVars.GEMINI_MAX_RETRIES}`)
+      logger.log(`Using Groq model: ${envVars.GROQ_MODEL}`)
+      logger.log(`Request timeout: ${envVars.GROQ_REQUEST_TIMEOUT}ms`)
+      logger.log(`Max retries: ${envVars.GROQ_MAX_RETRIES}`)
     }
   } catch (error) {
     logger.error("Environment validation failed:", error instanceof Error ? error.message : String(error))

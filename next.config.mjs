@@ -4,10 +4,6 @@ const nextConfig = {
   
   // Enable strict mode for better development experience
   reactStrictMode: true,
-  // Disable ESLint during production builds; we rely on TypeScript strict checks instead
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   
   // Optimize for production
   swcMinify: true,

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Download, RotateCcw, Clock, Users, ChefHat, Copy } from "lucide-react"
-import type { Recipe } from "@/app/page"
+import type { Recipe } from "@/lib/schemas"
 
 interface RecipeDisplayProps {
   recipe: Recipe

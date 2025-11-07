@@ -13,7 +13,7 @@ Extract clean, structured recipes from cooking websites. Paste a URL and get a c
 - Next.js App Router (API routes in `app/api/*`)
 - TypeScript, React 18.3.1
 - Tailwind CSS, shadcn/ui components
-- Google Gemini via `@google/generative-ai`; Groq via `groq-sdk`
+- Groq via `groq-sdk`
 - Zod for validation
 
 ---
@@ -28,19 +28,15 @@ npm install
 2) Configure environment
 Create `.env.local` in the project root. See `.env.example` for all available options. Minimum:
 ```bash
-GOOGLE_API_KEY=your_google_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
 # optional overrides
-GEMINI_MODEL=gemini-2.0-flash-exp
-GEMINI_REQUEST_TIMEOUT=30000
-GEMINI_MAX_RETRIES=2
-GEMINI_RETRY_DELAY=1000
+GROQ_MODEL=groq/llama-3.3-70b-versatile
+GROQ_REQUEST_TIMEOUT=30000
+GROQ_MAX_RETRIES=2
+GROQ_RETRY_DELAY=1000
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NODE_ENV=development
 ```
-# Groq (optional)
-GROQ_API_KEY=your_groq_api_key_here
-GROQ_MODEL=groq/compound-mini
-EXTRACTION_PROVIDER=groq
 
 3) Run the app
 ```bash
@@ -98,9 +94,10 @@ Accepts `{ recipe }` and returns a downloadable PDF. The server generates a PDF 
 - `app/page.tsx`: Client UI workflow and network calls.
 - `components/*`: Form, recipe display, loading and error components.
 - `app/api/extract-recipe/route.ts`: HTTP handler, rate limiting, input validation, error mapping.
-- `lib/recipe-extraction.ts`: Service orchestrating prompt building, Gemini call, parsing, sanitizing, logging.
-- `lib/gemini-client.ts`: Gemini client with timeout/retry/backoff and typed error categories.
-- `lib/prompts.ts`: System/extraction/validation prompts with examples.
+- `lib/groq-extraction.ts`: Service orchestrating prompt building, Groq API calls, parsing, sanitizing, logging.
+- `lib/groq-client.ts`: Groq client with timeout/retry/backoff and typed error categories.
+- `lib/groq-prompts.ts`: System/extraction/validation prompts for Groq.
+- `lib/groq-response.ts`: Response parsing and validation utilities.
 - `lib/schemas.ts`: Zod schemas and types for inputs, recipes, responses, logs.
 - `lib/env.ts`: Validated env loader.
 
