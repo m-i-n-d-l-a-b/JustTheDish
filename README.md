@@ -6,12 +6,12 @@ Extract clean, structured recipes from cooking websites. Paste a URL and get a c
 - **URL to Recipe**: Extracts title, ingredients, steps, servings, prep and cook time.
 - **Robust validation**: Zod schemas for inputs and AI responses; clear error mapping.
 - **Resilient AI calls**: Timeout, retries with jittered backoff, rate-limit handling.
-- **Basic rate limiting**: 10 requests/hour per IP (memory; swap for Redis in prod).
+- **Basic rate limiting**: 1 request per minute per IP (memory; swap for Redis in prod).
 - **Download**: Generate a downloadable PDF.
 
 ### Tech Stack
 - Next.js App Router (API routes in `app/api/*`)
-- TypeScript, React 19
+- TypeScript, React 18.3.1
 - Tailwind CSS, shadcn/ui components
 - Google Gemini via `@google/generative-ai`; Groq via `groq-sdk`
 - Zod for validation
@@ -26,7 +26,7 @@ npm install
 ```
 
 2) Configure environment
-Create `.env.local` in the project root. See `ENV_SETUP.md` for details. Minimum:
+Create `.env.local` in the project root. See `.env.example` for all available options. Minimum:
 ```bash
 GOOGLE_API_KEY=your_google_api_key_here
 # optional overrides
@@ -84,15 +84,13 @@ Success
 Errors use `{ error: { type, message } }` with appropriate HTTP codes.
 
 Notes
-- In-memory rate limiting: 10 req/hour/IP.
+- In-memory rate limiting: 1 request per minute per IP.
 - Validates URL and AI response with Zod.
 - Maps domain errors to HTTP status consistently.
 
 ### POST `/api/generate-pdf`
 Accepts `{ recipe }` and returns a downloadable PDF. The server generates a PDF using `pdfkit` and streams it back with `application/pdf`.
 
-### GET `/api/debug-env`
-Returns limited environment diagnostics (no secrets).
 
 ---
 
@@ -109,7 +107,7 @@ Returns limited environment diagnostics (no secrets).
 ---
 
 ## Security & Privacy
-- Never logs API keys. `debug-env` only reports presence of keys, not values.
+- Never logs API keys or sensitive data.
 - Basic protections against localhost/internal URLs.
 - Avoid sending or storing PII; URLs may appear in logs during development—hash/redact for production.
 
@@ -135,4 +133,4 @@ npm run lint     # lint
 ---
 
 ## License
-MIT (or your choice). Update as appropriate.
+MIT License - see [LICENSE](LICENSE) file for details.

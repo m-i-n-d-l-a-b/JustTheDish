@@ -51,7 +51,7 @@ export function RecipeDisplay({ recipe, onReset }: RecipeDisplayProps) {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (error) {
-      console.error("Failed to download PDF:", error)
+      // Silently handle PDF download errors - user will see the error via UI
       // In a real app, you'd show a toast notification here
     }
   }
@@ -98,7 +98,7 @@ export function RecipeDisplay({ recipe, onReset }: RecipeDisplayProps) {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch (error) {
-      console.error("Failed to copy recipe:", error)
+      // Silently handle copy errors - user will see the error via UI
     }
   }
 

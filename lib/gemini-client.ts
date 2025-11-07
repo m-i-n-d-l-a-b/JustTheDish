@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai"
 import { getEnv } from "./env"
 import { geminiErrorSchema } from "./schemas"
+import { logger } from "./logger"
 
 /**
  * Custom error class for Gemini API errors
@@ -80,10 +81,10 @@ export class GeminiClient {
   private baseRetryDelay: number
 
   constructor() {
-    console.log("🔄 Initializing GeminiClient...")
+    logger.log("Initializing GeminiClient...")
     
     const env = getEnv()
-    console.log("🔧 Environment loaded successfully")
+    logger.log("Environment loaded successfully")
     
     // Fail fast if API key is not configured
     if (!env.GOOGLE_API_KEY || env.GOOGLE_API_KEY.trim().length === 0) {
@@ -96,7 +97,7 @@ export class GeminiClient {
     this.requestTimeout = env.GEMINI_REQUEST_TIMEOUT
     this.maxRetries = env.GEMINI_MAX_RETRIES
     this.baseRetryDelay = env.GEMINI_RETRY_DELAY
-    console.log("✅ GeminiClient initialized with model:", env.GEMINI_MODEL)
+    logger.log(`GeminiClient initialized with model: ${env.GEMINI_MODEL}`)
   }
 
   // Note: generation config kept minimal; prompt enforces strict JSON.
@@ -201,7 +202,7 @@ export class GeminiClient {
         
         // Log successful retry if this wasn't the first attempt
         if (attempt > 0) {
-          console.log(`✅ ${operationName} succeeded on attempt ${attempt + 1}`)
+          logger.log(`${operationName} succeeded on attempt ${attempt + 1}`)
         }
         
         return result
@@ -216,7 +217,7 @@ export class GeminiClient {
         // Handle rate limiting with Retry-After header
         if (lastError instanceof GeminiRateLimitError && lastError.retryAfter) {
           const retryDelay = lastError.retryAfter * 1000 // Convert to milliseconds
-          console.warn(`⏳ Rate limited, retrying after ${retryDelay}ms`)
+          logger.warn(`Rate limited, retrying after ${retryDelay}ms`)
           await sleep(retryDelay)
           continue
         }
@@ -224,8 +225,8 @@ export class GeminiClient {
         // Calculate backoff delay
         const backoffDelay = calculateBackoffDelay(attempt, this.baseRetryDelay)
         
-        console.warn(
-          `⚠️  ${operationName} failed (attempt ${attempt + 1}/${this.maxRetries + 1}): ${lastError.message}. ` +
+        logger.warn(
+          `${operationName} failed (attempt ${attempt + 1}/${this.maxRetries + 1}): ${lastError.message}. ` +
           `Retrying in ${Math.round(backoffDelay)}ms...`
         )
         
@@ -235,7 +236,7 @@ export class GeminiClient {
 
     // All retries exhausted
     const finalMessage = lastError ? lastError.message : "Unknown error"
-    console.error(`❌ ${operationName} failed after ${this.maxRetries + 1} attempts: ${finalMessage}`)
+    logger.error(`${operationName} failed after ${this.maxRetries + 1} attempts: ${finalMessage}`)
     throw (lastError ?? new Error(finalMessage))
   }
 
@@ -293,7 +294,7 @@ export class GeminiClient {
       await this.generateContent("Test connection. Respond with: OK")
       return true
     } catch (error) {
-      console.error("Gemini health check failed:", error)
+      logger.error("Gemini health check failed:", error)
       return false
     }
   }

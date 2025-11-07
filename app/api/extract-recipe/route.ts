@@ -4,6 +4,7 @@ import { groqRecipeExtractionService } from "@/lib/groq-extraction"
 import { extractionApiRequestSchema, validateRecipeUrl } from "@/lib/schemas"
 import { getEnv } from "@/lib/env"
 import { getRateLimitKey, checkRateLimit } from "@/lib/rate-limit"
+import { logger } from "@/lib/logger"
 
 export const runtime = "nodejs"
 
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest) {
     throw new Error("Invalid extraction result")
 
   } catch (error) {
-    console.error("Recipe extraction API error:", {
+    logger.error("Recipe extraction API error:", {
       requestId,
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,

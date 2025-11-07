@@ -9,6 +9,7 @@ import {
   type GeminiRecipeResponse,
   type RecipeExtractionLog
 } from "./schemas"
+import { logger } from "./logger"
 
 /**
  * Custom error types for recipe extraction
@@ -60,13 +61,13 @@ export class RecipeExtractionService {
 
   constructor() {
     try {
-      console.log("🔄 Initializing RecipeExtractionService...")
+      logger.log("Initializing RecipeExtractionService...")
       this.geminiClient = new GeminiClient()
       this.isInitialized = true
-      console.log("✅ RecipeExtractionService initialized successfully")
+      logger.log("RecipeExtractionService initialized successfully")
     } catch (error) {
-      console.error("❌ Failed to initialize Gemini client:", error)
-      console.error("Stack trace:", error instanceof Error ? error.stack : 'No stack trace')
+      logger.error("Failed to initialize Gemini client:", error)
+      logger.error("Stack trace:", error instanceof Error ? error.stack : 'No stack trace')
       this.isInitialized = false
     }
   }
@@ -89,7 +90,7 @@ export class RecipeExtractionService {
     try {
       return await this.geminiClient.healthCheck()
     } catch (error) {
-      console.error("Recipe extraction service health check failed:", error)
+      logger.error("Recipe extraction service health check failed:", error)
       return false
     }
   }
@@ -211,8 +212,8 @@ export class RecipeExtractionService {
       // Validate against schema
       return validateGeminiResponse(parsedResponse)
     } catch (error) {
-      console.error("Failed to parse Gemini response:", error)
-      console.error("Raw response:", responseText)
+      logger.error("Failed to parse Gemini response:", error)
+      logger.error("Raw response:", responseText)
       
       throw new RecipeExtractionError(
         "Failed to parse AI response. The recipe extraction may have failed.",
@@ -260,13 +261,13 @@ export class RecipeExtractionService {
     }
 
     if (success) {
-      console.log(`✅ Recipe extraction successful:`, {
+      logger.log(`Recipe extraction successful:`, {
         requestId: logData.requestId,
         duration: `${logData.duration}ms`,
         model: logData.model,
       })
     } else {
-      console.error(`❌ Recipe extraction failed:`, {
+      logger.error(`Recipe extraction failed:`, {
         requestId: logData.requestId,
         duration: `${logData.duration}ms`,
         model: logData.model,
@@ -393,7 +394,7 @@ export class RecipeExtractionService {
       }
 
       // Handle unexpected errors
-      console.error("Unexpected error during recipe extraction:", error)
+      logger.error("Unexpected error during recipe extraction:", error)
       const errorMessage = error instanceof Error ? error.message : String(error)
       this.logExtraction(metadata, false, "server", errorMessage)
       

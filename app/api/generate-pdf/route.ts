@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { validateRecipe } from "@/lib/schemas"
+import { logger } from "@/lib/logger"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("PDF generation error:", error)
+    logger.error("PDF generation error:", error)
     const message = error instanceof Error ? error.message : "Failed to generate PDF"
     return NextResponse.json({ error: message }, { status: 500 })
   }

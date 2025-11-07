@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { logger } from "./logger"
 
 /**
  * Environment variables schema for validation
@@ -162,15 +163,15 @@ export type Env = z.infer<typeof envSchema>
 export function validateEnvironment(): void {
   try {
     const envVars = getEnv()
-    console.log(`✅ Environment validated for ${envVars.NODE_ENV} mode`)
+    logger.log(`Environment validated for ${envVars.NODE_ENV} mode`)
     
     if (envVars.NODE_ENV === "development") {
-      console.log(`🔧 Using Gemini model: ${envVars.GEMINI_MODEL}`)
-      console.log(`⏱️  Request timeout: ${envVars.GEMINI_REQUEST_TIMEOUT}ms`)
-      console.log(`🔄 Max retries: ${envVars.GEMINI_MAX_RETRIES}`)
+      logger.log(`Using Gemini model: ${envVars.GEMINI_MODEL}`)
+      logger.log(`Request timeout: ${envVars.GEMINI_REQUEST_TIMEOUT}ms`)
+      logger.log(`Max retries: ${envVars.GEMINI_MAX_RETRIES}`)
     }
   } catch (error) {
-    console.error("❌ Environment validation failed:", error instanceof Error ? error.message : String(error))
+    logger.error("Environment validation failed:", error instanceof Error ? error.message : String(error))
     throw error
   }
 }

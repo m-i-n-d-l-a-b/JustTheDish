@@ -21,7 +21,7 @@ export function getRateLimitKey(request: NextRequest): string {
 
 /**
  * Check and update rate limit state for a given key.
- * Allows one request per 60 seconds.
+ * Allows one request per minute (60 seconds).
  */
 export function checkRateLimit(key: string): boolean {
   const now = Date.now()

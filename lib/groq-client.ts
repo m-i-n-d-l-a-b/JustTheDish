@@ -1,6 +1,7 @@
 import { getEnv } from "./env"
 import { GroqError, GroqRateLimitError, GroqQuotaError, parseGroqError } from "./groq-errors"
 import Groq from "groq-sdk"
+import { logger } from "./logger"
 
 function addJitter(delay: number, jitterFactor: number = 0.1): number {
   const jitter = delay * jitterFactor * Math.random()
@@ -56,7 +57,7 @@ export class GroqClient {
       try {
         const result = await this.withTimeout(op, this.requestTimeout)
         if (attempt > 0) {
-          console.log(`✅ ${opName} succeeded on attempt ${attempt + 1}`)
+          logger.log(`${opName} succeeded on attempt ${attempt + 1}`)
         }
         return result
       } catch (error) {
@@ -67,17 +68,17 @@ export class GroqClient {
 
         if (lastError instanceof GroqRateLimitError && lastError.retryAfter) {
           const delay = lastError.retryAfter * 1000
-          console.warn(`⏳ Rate limited, retrying after ${delay}ms`)
+          logger.warn(`Rate limited, retrying after ${delay}ms`)
           await sleep(delay)
           continue
         }
 
         const delay = addJitter(this.baseRetryDelay * Math.pow(2, attempt))
-        console.warn(`⚠️  ${opName} failed (attempt ${attempt + 1}/${this.maxRetries + 1}): ${lastError.message}. Retrying in ${Math.round(delay)}ms...`)
+        logger.warn(`${opName} failed (attempt ${attempt + 1}/${this.maxRetries + 1}): ${lastError.message}. Retrying in ${Math.round(delay)}ms...`)
         await sleep(delay)
       }
     }
-    console.error(`❌ ${opName} failed after ${this.maxRetries + 1} attempts: ${lastError?.message ?? "Unknown"}`)
+    logger.error(`${opName} failed after ${this.maxRetries + 1} attempts: ${lastError?.message ?? "Unknown"}`)
     throw (lastError ?? new GroqError("Unknown error"))
   }
 

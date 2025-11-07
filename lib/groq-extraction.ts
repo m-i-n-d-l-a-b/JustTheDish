@@ -11,6 +11,7 @@ import {
 } from "./schemas"
 import { getEnv } from "./env"
 import { GroqError, GroqRateLimitError, GroqQuotaError, GroqContentBlockedError } from "./groq-errors"
+import { logger } from "./logger"
 
 class GroqRecipeExtractionError extends Error {
   constructor(
@@ -53,7 +54,7 @@ export class GroqRecipeExtractionService {
       this.client = new GroqClient()
       this.isInitialized = true
     } catch (error) {
-      console.error("Failed to initialize Groq client:", error)
+      logger.error("Failed to initialize Groq client:", error)
       this.isInitialized = false
     }
   }
@@ -132,9 +133,9 @@ export class GroqRecipeExtractionService {
       errorMessage,
     }
     if (success) {
-      console.log("✅ Groq extraction successful:", { requestId: logData.requestId, duration: `${logData.duration}ms` })
+      logger.log("Groq extraction successful:", { requestId: logData.requestId, duration: `${logData.duration}ms` })
     } else {
-      console.error("❌ Groq extraction failed:", { requestId: logData.requestId, errorType, errorMessage })
+      logger.error("Groq extraction failed:", { requestId: logData.requestId, errorType, errorMessage })
     }
   }
 
@@ -288,7 +289,7 @@ export class GroqRecipeExtractionService {
         return { error: { type: error.type, message: error.message }, metadata }
       }
 
-      console.error("Unexpected error during Groq extraction:", error)
+      logger.error("Unexpected error during Groq extraction:", error)
       const message = error instanceof Error ? error.message : String(error)
       this.log(metadata, false, "server", message)
       return { error: { type: "server", message: "An unexpected error occurred while processing the recipe. Please try again." }, metadata }
