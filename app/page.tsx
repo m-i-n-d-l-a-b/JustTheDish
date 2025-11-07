@@ -96,6 +96,17 @@ export default function RecipeSummarizerPage() {
         {/* Footer */}
         <footer className="mt-16 pt-8 border-t border-muted text-center text-sm text-[#6b7280]">
           <span className="block text-xs mt-1">Recipes, simplified.</span>
+          <span className="block text-xs mt-1">
+            Built by{" "}
+            <a
+              href="https://www.mindlabai.xyz/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-[#4b5563] underline"
+            >
+              MindLab AI
+            </a>
+          </span>
         </footer>
       </div>
     </main>
