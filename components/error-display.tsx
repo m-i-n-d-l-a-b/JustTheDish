@@ -1,53 +1,53 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { AlertCircle, RefreshCw, ExternalLink } from "lucide-react"
-import type { RecipeError } from "@/lib/schemas"
+import { AlertCircle, ExternalLink, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { RecipeError } from "@/lib/schemas";
 
 interface ErrorDisplayProps {
-  error: RecipeError
-  onRetry: () => void
+  error: RecipeError;
+  onRetry: () => void;
 }
 
 export function ErrorDisplay({ error, onRetry }: ErrorDisplayProps) {
   const getErrorIcon = () => {
     switch (error.type) {
       case "rate-limit":
-        return <AlertCircle className="h-5 w-5 text-destructive" />
+        return <AlertCircle className="h-5 w-5 text-destructive" />;
       default:
-        return <AlertCircle className="h-5 w-5 text-destructive" />
+        return <AlertCircle className="h-5 w-5 text-destructive" />;
     }
-  }
+  };
 
   const getErrorTitle = () => {
     switch (error.type) {
       case "invalid-url":
-        return "Invalid URL"
+        return "Invalid URL";
       case "not-recipe":
-        return "No Recipe Found"
+        return "No Recipe Found";
       case "paywall":
-        return "Content Behind Paywall"
+        return "Content Behind Paywall";
       case "url-inaccessible":
-        return "URL Not Accessible"
+        return "URL Not Accessible";
       case "parsing-failed":
-        return "Recipe Parsing Failed"
+        return "Recipe Parsing Failed";
       case "content-blocked":
-        return "Content Blocked"
+        return "Content Blocked";
       case "ai-unavailable":
-        return "AI Service Unavailable"
+        return "AI Service Unavailable";
       case "quota-exceeded":
-        return "Usage Limit Exceeded"
+        return "Usage Limit Exceeded";
       case "network":
-        return "Connection Error"
+        return "Connection Error";
       case "rate-limit":
-        return "Rate Limit Exceeded"
+        return "Rate Limit Exceeded";
       case "server":
-        return "Server Error"
+        return "Server Error";
       default:
-        return "Error"
+        return "Error";
     }
-  }
+  };
 
   const getSuggestions = () => {
     switch (error.type) {
@@ -56,61 +56,69 @@ export function ErrorDisplay({ error, onRetry }: ErrorDisplayProps) {
           "Make sure the URL starts with http:// or https://",
           "Check for typos in the URL",
           "Try copying and pasting the URL directly from your browser",
-        ]
+        ];
       case "not-recipe":
         return [
           "Make sure the URL points to a recipe page, not a blog post or article",
           "Try a different recipe from the same website",
           'Look for URLs that contain words like "recipe" or "cooking"',
-        ]
+        ];
       case "paywall":
         return [
           "Try a free recipe website like AllRecipes or Food Network",
           "Look for the same recipe on a different website",
           "Some sites offer free articles with registration",
-        ]
+        ];
       case "url-inaccessible":
         return [
           "Check that the website is currently online",
           "Try accessing the URL directly in your browser",
           "Some websites may block automated access",
-        ]
+        ];
       case "parsing-failed":
         return [
           "The recipe format may not be supported",
           "Try a different recipe from a popular cooking website",
           "Some recipe formats are easier to extract than others",
-        ]
+        ];
       case "content-blocked":
         return [
           "The content was blocked by safety filters",
           "Try a different recipe URL",
           "Make sure the URL points to appropriate cooking content",
-        ]
+        ];
       case "ai-unavailable":
         return [
           "The AI service is temporarily unavailable",
           "Wait a few minutes and try again",
           "Check if there are any ongoing service issues",
-        ]
+        ];
       case "quota-exceeded":
         return [
           "Usage limit has been reached",
           "Try again later when the quota resets",
           "Consider upgrading for higher limits",
-        ]
+        ];
       case "network":
-        return ["Check your internet connection", "Try refreshing the page", "Wait a moment and try again"]
+        return [
+          "Check your internet connection",
+          "Try refreshing the page",
+          "Wait a moment and try again",
+        ];
       case "rate-limit":
         return [
           "You can try again in an hour",
           "Rate limiting helps keep the service available for everyone",
           "Consider bookmarking recipes for later extraction",
-        ]
+        ];
       default:
-        return ["Try a different recipe URL", "Wait a moment and try again", "Check that the website is accessible"]
+        return [
+          "Try a different recipe URL",
+          "Wait a moment and try again",
+          "Check that the website is accessible",
+        ];
     }
-  }
+  };
 
   return (
     <Card className="border-destructive/20">
@@ -156,5 +164,5 @@ export function ErrorDisplay({ error, onRetry }: ErrorDisplayProps) {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

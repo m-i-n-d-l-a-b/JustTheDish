@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
 import { Inter, Merriweather } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -42,7 +43,10 @@ export default function RootLayout({
           className="fixed inset-0 z-0 opacity-10 pointer-events-none bg-repeat"
           style={{ backgroundImage: 'url("/herb-pattern-2.svg")' }}
         />
-        <div className="relative z-10">{children}</div>
+        <div className="relative z-10">
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </div>
+        <Analytics />
       </body>
     </html>
   );

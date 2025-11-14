@@ -1,7 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { validateRecipe } from "@/lib/schemas";
-import { logger } from "@/lib/logger";
+import { ERROR_MESSAGES, HTTP_STATUS, REQUEST_SIZE_LIMITS } from "@/lib/constants";
 import { addCorsHeaders, handleCorsPreflight } from "@/lib/cors";
+import { createErrorResponse } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { validateRecipe } from "@/lib/schemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,12 +17,12 @@ export async function OPTIONS(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
   try {
-    // Check request body size (100KB limit for PDF generation)
+    // Check request body size
     const contentLength = request.headers.get("content-length");
-    if (contentLength && parseInt(contentLength, 10) > 100 * 1024) {
+    if (contentLength && parseInt(contentLength, 10) > REQUEST_SIZE_LIMITS.GENERATE_PDF) {
       const response = NextResponse.json(
-        { error: "Request body too large (maximum 100KB)" },
-        { status: 413 }
+        createErrorResponse("server", ERROR_MESSAGES.REQUEST_TOO_LARGE_PDF),
+        { status: HTTP_STATUS.PAYLOAD_TOO_LARGE }
       );
       return addCorsHeaders(response, origin);
     }
@@ -28,7 +30,10 @@ export async function POST(request: NextRequest) {
     const { recipe } = await request.json();
 
     if (!recipe) {
-      const response = NextResponse.json({ error: "Recipe data is required" }, { status: 400 });
+      const response = NextResponse.json(
+        createErrorResponse("server", ERROR_MESSAGES.RECIPE_REQUIRED),
+        { status: HTTP_STATUS.BAD_REQUEST }
+      );
       return addCorsHeaders(response, origin);
     }
 
@@ -49,8 +54,10 @@ export async function POST(request: NextRequest) {
     return addCorsHeaders(response, origin);
   } catch (error) {
     logger.error("PDF generation error:", error);
-    const message = error instanceof Error ? error.message : "Failed to generate PDF";
-    const response = NextResponse.json({ error: message }, { status: 500 });
+    const message = error instanceof Error ? error.message : ERROR_MESSAGES.PDF_GENERATION_FAILED;
+    const response = NextResponse.json(createErrorResponse("server", message), {
+      status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+    });
     return addCorsHeaders(response, origin);
   }
 }
@@ -64,67 +71,69 @@ async function generateRecipePDF(recipe: {
   prepTime?: string;
   totalTime?: string;
 }): Promise<ArrayBuffer> {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const { default: PDFDocument } = await import("pdfkit");
-      const doc = new PDFDocument({ size: "LETTER", margin: 50, autoFirstPage: false });
-      doc.addPage();
+  return new Promise((resolve, reject) => {
+    (async () => {
+      try {
+        const { default: PDFDocument } = await import("pdfkit");
+        const doc = new PDFDocument({ size: "LETTER", margin: 50, autoFirstPage: false });
+        doc.addPage();
 
-      const chunks: Buffer[] = [];
-      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-      doc.on("error", err => reject(err));
-      doc.on("end", () => {
-        const buffer = Buffer.concat(chunks);
-        const arrayBuffer = buffer.buffer.slice(
-          buffer.byteOffset,
-          buffer.byteOffset + buffer.byteLength
-        );
-        resolve(arrayBuffer);
-      });
+        const chunks: Buffer[] = [];
+        doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+        doc.on("error", err => reject(err));
+        doc.on("end", () => {
+          const buffer = Buffer.concat(chunks);
+          const arrayBuffer = buffer.buffer.slice(
+            buffer.byteOffset,
+            buffer.byteOffset + buffer.byteLength
+          );
+          resolve(arrayBuffer);
+        });
 
-      // Title
-      doc.fontSize(22).text(recipe.title, { align: "left" });
-      doc.moveDown(0.5);
+        // Title
+        doc.fontSize(22).text(recipe.title, { align: "left" });
+        doc.moveDown(0.5);
 
-      // Meta info
-      const meta: string[] = [];
-      if (recipe.servings) meta.push(`Servings: ${recipe.servings}`);
-      if (recipe.prepTime) meta.push(`Prep: ${recipe.prepTime}`);
-      if (recipe.cookTime) meta.push(`Cook: ${recipe.cookTime}`);
-      if (recipe.totalTime) meta.push(`Total: ${recipe.totalTime}`);
-      if (meta.length) {
-        doc.fontSize(12).fillColor("#374151").text(meta.join("   •   "));
-        doc.fillColor("#000000");
+        // Meta info
+        const meta: string[] = [];
+        if (recipe.servings) meta.push(`Servings: ${recipe.servings}`);
+        if (recipe.prepTime) meta.push(`Prep: ${recipe.prepTime}`);
+        if (recipe.cookTime) meta.push(`Cook: ${recipe.cookTime}`);
+        if (recipe.totalTime) meta.push(`Total: ${recipe.totalTime}`);
+        if (meta.length) {
+          doc.fontSize(12).fillColor("#374151").text(meta.join("   •   "));
+          doc.fillColor("#000000");
+        }
+
+        doc.moveDown();
+
+        // Ingredients
+        doc.fontSize(16).text("Ingredients", { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(12);
+        recipe.ingredients.forEach(ingredient => {
+          doc.text(`• ${ingredient}`);
+        });
+
+        doc.moveDown();
+
+        // Instructions
+        doc.fontSize(16).text("Instructions", { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(12);
+        recipe.steps.forEach((step, index) => {
+          doc.text(`${index + 1}. ${step}`);
+          doc.moveDown(0.25);
+        });
+
+        // Footer
+        doc.moveDown();
+        doc.fontSize(10).fillColor("#6B7280").text("Generated by Just The Dish");
+
+        doc.end();
+      } catch (err) {
+        reject(err);
       }
-
-      doc.moveDown();
-
-      // Ingredients
-      doc.fontSize(16).text("Ingredients", { underline: true });
-      doc.moveDown(0.5);
-      doc.fontSize(12);
-      recipe.ingredients.forEach(ingredient => {
-        doc.text(`• ${ingredient}`);
-      });
-
-      doc.moveDown();
-
-      // Instructions
-      doc.fontSize(16).text("Instructions", { underline: true });
-      doc.moveDown(0.5);
-      doc.fontSize(12);
-      recipe.steps.forEach((step, index) => {
-        doc.text(`${index + 1}. ${step}`);
-        doc.moveDown(0.25);
-      });
-
-      // Footer
-      doc.moveDown();
-      doc.fontSize(10).fillColor("#6B7280").text("Generated by Just The Dish");
-
-      doc.end();
-    } catch (err) {
-      reject(err);
-    }
+    })();
   });
 }

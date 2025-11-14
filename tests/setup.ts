@@ -1,17 +1,25 @@
-import { vi } from "vitest"
+import { vi } from "vitest";
 
 // Mock groq-sdk to avoid live network calls
 vi.mock("groq-sdk", () => {
+  interface GroqChatCompletions {
+    create: ReturnType<typeof vi.fn>;
+  }
+
+  interface GroqChat {
+    completions: GroqChatCompletions;
+  }
+
   class GroqMock {
-    public chat: any
-    constructor(_opts?: any) {
+    public chat: GroqChat;
+    constructor(_opts?: unknown) {
       // Instances read the shared prototype chat by default
-      this.chat = (GroqMock as any).prototype.chat
+      this.chat = (GroqMock as unknown as { prototype: { chat: GroqChat } }).prototype.chat;
     }
   }
-  ;(GroqMock as any).prototype.chat = {
+  (GroqMock as unknown as { prototype: { chat: GroqChat } }).prototype.chat = {
     completions: {
-      create: vi.fn(async (_args: any) => {
+      create: vi.fn(async (_args: unknown) => {
         return {
           choices: [
             {
@@ -22,11 +30,9 @@ vi.mock("groq-sdk", () => {
               },
             },
           ],
-        }
+        };
       }),
     },
-  }
-  return { default: GroqMock }
-})
-
-
+  };
+  return { default: GroqMock };
+});

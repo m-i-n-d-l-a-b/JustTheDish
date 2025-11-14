@@ -1,54 +1,52 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Spinner } from "@/components/ui/spinner"
-import { ChefHat, Link } from "lucide-react"
+import { ChefHat, Link } from "lucide-react";
+import type React from "react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 interface RecipeFormProps {
-  onSubmit: (url: string) => void
-  disabled?: boolean
+  onSubmit: (url: string) => void;
+  disabled?: boolean;
 }
 
 export function RecipeForm({ onSubmit, disabled }: RecipeFormProps) {
-  const [url, setUrl] = useState("")
-  const [urlError, setUrlError] = useState("")
+  const [url, setUrl] = useState("");
+  const [urlError, setUrlError] = useState("");
 
   const validateUrl = (input: string): boolean => {
     try {
-      const urlObj = new URL(input)
-      return urlObj.protocol === "http:" || urlObj.protocol === "https:"
+      const urlObj = new URL(input);
+      return urlObj.protocol === "http:" || urlObj.protocol === "https:";
     } catch {
-      return false
+      return false;
     }
-  }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!url.trim()) {
-      setUrlError("Please enter a recipe URL")
-      return
+      setUrlError("Please enter a recipe URL");
+      return;
     }
 
     if (!validateUrl(url)) {
-      setUrlError("Please enter a valid URL (must start with http:// or https://)")
-      return
+      setUrlError("Please enter a valid URL (must start with http:// or https://)");
+      return;
     }
 
-    setUrlError("")
-    onSubmit(url.trim())
-  }
+    setUrlError("");
+    onSubmit(url.trim());
+  };
 
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUrl(e.target.value)
-    if (urlError) setUrlError("")
-  }
+    setUrl(e.target.value);
+    if (urlError) setUrlError("");
+  };
 
   return (
     <Card className="w-full">
@@ -90,9 +88,7 @@ export function RecipeForm({ onSubmit, disabled }: RecipeFormProps) {
             )}
           </Button>
         </form>
-
-        
       </CardContent>
     </Card>
-  )
+  );
 }

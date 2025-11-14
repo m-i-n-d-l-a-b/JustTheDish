@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card";
 
 export function LoadingDisplay(): JSX.Element {
   return (
@@ -18,5 +18,5 @@ export function LoadingDisplay(): JSX.Element {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

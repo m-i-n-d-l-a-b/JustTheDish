@@ -1,31 +1,33 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
-import { Download, RotateCcw, Clock, Users, ChefHat, Copy } from "lucide-react"
-import type { Recipe } from "@/lib/schemas"
+import { ChefHat, Clock, Copy, Download, RotateCcw, Users } from "lucide-react";
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ERROR_MESSAGES, UI_TIMING } from "@/lib/constants";
+import type { Recipe } from "@/lib/schemas";
 
 interface RecipeDisplayProps {
-  recipe: Recipe
-  onReset: () => void
+  recipe: Recipe;
+  onReset: () => void;
 }
 
 export function RecipeDisplay({ recipe, onReset }: RecipeDisplayProps) {
-  const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set())
-  const [copied, setCopied] = useState(false)
+  const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const toggleIngredient = (index: number) => {
-    const newChecked = new Set(checkedIngredients)
+    const newChecked = new Set(checkedIngredients);
     if (newChecked.has(index)) {
-      newChecked.delete(index)
+      newChecked.delete(index);
     } else {
-      newChecked.add(index)
+      newChecked.add(index);
     }
-    setCheckedIngredients(newChecked)
-  }
+    setCheckedIngredients(newChecked);
+  };
 
   const handleDownloadPDF = async () => {
     try {
@@ -35,81 +37,100 @@ export function RecipeDisplay({ recipe, onReset }: RecipeDisplayProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ recipe }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to generate PDF")
+        throw new Error("Failed to generate PDF");
       }
 
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `${recipe.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-    } catch (error) {
-      // Silently handle PDF download errors - user will see the error via UI
-      // In a real app, you'd show a toast notification here
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${recipe.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : ERROR_MESSAGES.PDF_GENERATION_FAILED;
+      console.error("PDF download error:", err);
+      setError(`Failed to download PDF: ${errorMessage}`);
+      // Clear error after configured duration
+      setTimeout(() => setError(null), UI_TIMING.ERROR_DISPLAY_DURATION);
     }
-  }
+  };
 
   function formatRecipeForClipboard(r: Recipe): string {
-    const meta: string[] = []
-    if (r.servings) meta.push(`Servings: ${r.servings}`)
-    if (r.prepTime) meta.push(`Prep: ${r.prepTime}`)
-    if (r.cookTime) meta.push(`Cook: ${r.cookTime}`)
-    if (r.totalTime) meta.push(`Total: ${r.totalTime}`)
+    const meta: string[] = [];
+    if (r.servings) meta.push(`Servings: ${r.servings}`);
+    if (r.prepTime) meta.push(`Prep: ${r.prepTime}`);
+    if (r.cookTime) meta.push(`Cook: ${r.cookTime}`);
+    if (r.totalTime) meta.push(`Total: ${r.totalTime}`);
 
-    const ingredients = r.ingredients.map((ing, i) => `${i + 1}. ${ing}`).join("\n")
-    const steps = r.steps.map((st, i) => `${i + 1}. ${st}`).join("\n\n")
+    const ingredients = r.ingredients.map((ing, i) => `${i + 1}. ${ing}`).join("\n");
+    const steps = r.steps.map((st, i) => `${i + 1}. ${st}`).join("\n\n");
 
     return [
       `RECIPE: ${r.title}`,
-      "" + (meta.length ? meta.join(" • ") : ""),
+      `${meta.length ? meta.join(" • ") : ""}`,
       "",
       "INGREDIENTS:",
       ingredients,
       "",
       "INSTRUCTIONS:",
       steps,
-    ].join("\n")
+    ].join("\n");
   }
 
   const handleCopyRecipe = async () => {
-    const text = formatRecipeForClipboard(recipe)
+    const text = formatRecipeForClipboard(recipe);
     try {
       if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text)
+        await navigator.clipboard.writeText(text);
       } else {
         // Fallback for environments without Clipboard API
-        const textarea = document.createElement("textarea")
-        textarea.value = text
-        textarea.setAttribute("readonly", "")
-        textarea.style.position = "absolute"
-        textarea.style.left = "-9999px"
-        document.body.appendChild(textarea)
-        textarea.select()
-        document.execCommand("copy")
-        document.body.removeChild(textarea)
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "absolute";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
       }
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch (error) {
-      // Silently handle copy errors - user will see the error via UI
+      setCopied(true);
+      setTimeout(() => setCopied(false), UI_TIMING.COPIED_STATE_DURATION);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : ERROR_MESSAGES.COPY_FAILED;
+      console.error("Copy error:", err);
+      setError(`Failed to copy recipe: ${errorMessage}`);
+      // Clear error after configured duration
+      setTimeout(() => setError(null), UI_TIMING.ERROR_DISPLAY_DURATION);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
+      {/* Error Display */}
+      {error && (
+        <Card className="border-destructive bg-destructive/10">
+          <CardContent className="pt-6">
+            <p className="text-sm text-destructive">{error}</p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Recipe Header */}
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row items-start gap-4">
             <div className="w-full md:basis-2/3 min-w-0">
-              <CardTitle className="text-2xl md:text-3xl text-balance mb-2 text-[#1f2937]">{recipe.title}</CardTitle>
+              <CardTitle className="text-2xl md:text-3xl text-balance mb-2 text-[#1f2937]">
+                {recipe.title}
+              </CardTitle>
               <div className="flex flex-wrap gap-2">
                 {recipe.servings && (
                   <Badge variant="secondary" className="flex items-center gap-1">
@@ -142,7 +163,13 @@ export function RecipeDisplay({ recipe, onReset }: RecipeDisplayProps) {
                 <Download className="h-4 w-4 mr-2" />
                 Download PDF
               </Button>
-              <Button onClick={handleCopyRecipe} variant="outline" size="sm" disabled={copied} className="w-full">
+              <Button
+                onClick={handleCopyRecipe}
+                variant="outline"
+                size="sm"
+                disabled={copied}
+                className="w-full"
+              >
                 <Copy className="h-4 w-4 mr-2" />
                 {copied ? "Copied!" : "Copy Recipe"}
               </Button>
@@ -177,7 +204,9 @@ export function RecipeDisplay({ recipe, onReset }: RecipeDisplayProps) {
                   <label
                     htmlFor={`ingredient-${index}`}
                     className={`text-sm leading-relaxed cursor-pointer flex-1 ${
-                      checkedIngredients.has(index) ? "line-through text-muted-foreground" : "text-foreground"
+                      checkedIngredients.has(index)
+                        ? "line-through text-muted-foreground"
+                        : "text-foreground"
                     }`}
                   >
                     {ingredient}
@@ -211,5 +240,5 @@ export function RecipeDisplay({ recipe, onReset }: RecipeDisplayProps) {
         </Card>
       </div>
     </div>
-  )
+  );
 }

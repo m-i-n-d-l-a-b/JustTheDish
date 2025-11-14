@@ -1,9 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { groqRecipeExtractionService } from "@/lib/groq-extraction";
-import { extractionApiRequestSchema, validateRecipeUrl } from "@/lib/schemas";
-import { getRateLimitKey, checkRateLimit } from "@/lib/rate-limit";
-import { logger } from "@/lib/logger";
+import { ERROR_MESSAGES, HTTP_STATUS, REQUEST_SIZE_LIMITS } from "@/lib/constants";
 import { addCorsHeaders, handleCorsPreflight } from "@/lib/cors";
+import { getStatusCodeForErrorType } from "@/lib/errors";
+import { groqRecipeExtractionService } from "@/lib/groq-extraction";
+import { logger } from "@/lib/logger";
+import { checkRateLimitWithInfo, getRateLimitKey } from "@/lib/rate-limit";
+import { extractionApiRequestSchema, validateRecipeUrl } from "@/lib/schemas";
 
 export const runtime = "nodejs";
 
@@ -18,12 +20,12 @@ export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
 
   try {
-    // Check request body size (1MB limit)
+    // Check request body size
     const contentLength = request.headers.get("content-length");
-    if (contentLength && parseInt(contentLength, 10) > 1024 * 1024) {
+    if (contentLength && parseInt(contentLength, 10) > REQUEST_SIZE_LIMITS.EXTRACT_RECIPE) {
       const response = NextResponse.json(
-        { error: { type: "server", message: "Request body too large (maximum 1MB)" } },
-        { status: 413 }
+        { error: { type: "server", message: ERROR_MESSAGES.REQUEST_TOO_LARGE_EXTRACT } },
+        { status: HTTP_STATUS.PAYLOAD_TOO_LARGE }
       );
       return addCorsHeaders(response, origin);
     }
@@ -33,10 +35,10 @@ export async function POST(request: NextRequest) {
     try {
       const parsed = extractionApiRequestSchema.parse(body);
       url = parsed.url;
-    } catch (validationError) {
+    } catch (_validationError) {
       const response = NextResponse.json(
-        { error: { type: "invalid-url", message: "Please provide a valid URL." } },
-        { status: 400 }
+        { error: { type: "invalid-url", message: ERROR_MESSAGES.INVALID_URL } },
+        { status: HTTP_STATUS.BAD_REQUEST }
       );
       return addCorsHeaders(response, origin);
     }
@@ -57,32 +59,35 @@ export async function POST(request: NextRequest) {
 
     // Check rate limit
     const rateLimitKey = getRateLimitKey(request);
-    if (!checkRateLimit(rateLimitKey)) {
+    const rateLimitInfo = checkRateLimitWithInfo(rateLimitKey);
+    if (!rateLimitInfo.allowed) {
       const response = NextResponse.json(
         {
           error: {
             type: "rate-limit",
-            message:
-              "Rate limit exceeded. You can extract one recipe per minute. Please try again later.",
+            message: ERROR_MESSAGES.RATE_LIMIT_EXCEEDED,
           },
         },
-        { status: 429 }
+        { status: HTTP_STATUS.TOO_MANY_REQUESTS }
       );
+      response.headers.set("X-RateLimit-Limit", rateLimitInfo.limit.toString());
+      response.headers.set("X-RateLimit-Remaining", rateLimitInfo.remaining.toString());
+      response.headers.set("X-RateLimit-Reset", rateLimitInfo.reset.toString());
       return addCorsHeaders(response, origin);
     }
 
     // Validate URL format using schema
     try {
       validateRecipeUrl(url);
-    } catch (validationError) {
+    } catch (_validationError) {
       const response = NextResponse.json(
         {
           error: {
             type: "invalid-url",
-            message: "Please enter a valid URL starting with http:// or https://.",
+            message: ERROR_MESSAGES.INVALID_URL,
           },
         },
-        { status: 400 }
+        { status: HTTP_STATUS.BAD_REQUEST }
       );
       return addCorsHeaders(response, origin);
     }
@@ -92,11 +97,10 @@ export async function POST(request: NextRequest) {
         {
           error: {
             type: "server",
-            message:
-              "Recipe extraction service is temporarily unavailable. Please try again later.",
+            message: ERROR_MESSAGES.SERVICE_UNAVAILABLE,
           },
         },
-        { status: 503 }
+        { status: HTTP_STATUS.SERVICE_UNAVAILABLE }
       );
       return addCorsHeaders(response, origin);
     }
@@ -104,11 +108,17 @@ export async function POST(request: NextRequest) {
     // Extract recipe using Groq API
     const result = await groqRecipeExtractionService.extractRecipe(url, { requestId });
 
+    // Reuse rate limit info from the initial check (line 62) to avoid double-incrementing
+    // The rate limit info already reflects the current state after the first check
+
     // Handle successful extraction
     if (result.recipe) {
       const response = NextResponse.json({
         recipe: result.recipe,
       });
+      response.headers.set("X-RateLimit-Limit", rateLimitInfo.limit.toString());
+      response.headers.set("X-RateLimit-Remaining", rateLimitInfo.remaining.toString());
+      response.headers.set("X-RateLimit-Reset", rateLimitInfo.reset.toString());
       return addCorsHeaders(response, origin);
     }
 
@@ -125,6 +135,9 @@ export async function POST(request: NextRequest) {
         },
         { status: statusCode }
       );
+      response.headers.set("X-RateLimit-Limit", rateLimitInfo.limit.toString());
+      response.headers.set("X-RateLimit-Remaining", rateLimitInfo.remaining.toString());
+      response.headers.set("X-RateLimit-Reset", rateLimitInfo.reset.toString());
       return addCorsHeaders(response, origin);
     }
 
@@ -141,37 +154,11 @@ export async function POST(request: NextRequest) {
       {
         error: {
           type: "server",
-          message: "An unexpected error occurred while processing the recipe. Please try again.",
+          message: ERROR_MESSAGES.UNEXPECTED_ERROR,
         },
       },
-      { status: 500 }
+      { status: HTTP_STATUS.INTERNAL_SERVER_ERROR }
     );
     return addCorsHeaders(response, origin);
-  }
-}
-
-/**
- * Map error types to appropriate HTTP status codes
- */
-function getStatusCodeForErrorType(errorType: string): number {
-  switch (errorType) {
-    case "invalid-url":
-      return 400;
-    case "not-recipe":
-      return 404;
-    case "paywall":
-    case "content-blocked":
-      return 403;
-    case "url-inaccessible":
-      return 404;
-    case "parsing-failed":
-      return 422;
-    case "ai-unavailable":
-      return 503;
-    case "quota-exceeded":
-      return 429;
-    case "server":
-    default:
-      return 500;
   }
 }

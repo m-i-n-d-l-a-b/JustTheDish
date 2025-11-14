@@ -15,14 +15,14 @@ Rules (be concise, never guess):
 - Ingredients: return the list verbatim as written (one string per line). Preserve wording, order, punctuation, capitalization, and WHITESPACE exactly as rendered. Do not concatenate tokens; keep spaces between numbers, units, and words (e.g., "1 cup sugar", not "1cupsugar"). Do not paraphrase, merge, split, convert, or normalize units. No additions or removals.
 - Steps: simplify and clarify only; remove redundant numbering/fluff without changing meaning.
 
-Allowed error types: not-recipe | paywall | url-inaccessible | parsing-failed | content-blocked.`
+Allowed error types: not-recipe | paywall | url-inaccessible | parsing-failed | content-blocked.`;
 
 export function createGroqRecipeExtractionPrompt(url: string): string {
   return `${GROQ_RECIPE_EXTRACTION_SYSTEM_PROMPT}
 
 Task: Extract a recipe for URL: ${url}
 - If you cannot reliably determine recipe content, return an appropriate error.
-- Respond with JSON only.`
+- Respond with JSON only.`;
 }
 
 export function createGroqRecipeValidationPrompt(extractedRecipe: string): string {
@@ -41,10 +41,13 @@ If any ingredient lines appear concatenated (e.g., "1cup" or "2tablespoons" stuc
 - FIRST, look for schema.org JSON-LD and copy "recipeIngredient" exactly; or
 - OTHERWISE, re-copy from the visible ingredient list LITERALLY with exact spacing.
 
-Return the corrected JSON, or an error object if the recipe is fundamentally flawed.`
+Return the corrected JSON, or an error object if the recipe is fundamentally flawed.`;
 }
 
-export function createGroqRecipeTimesValidationPrompt(url: string, extractedRecipe: string): string {
+export function createGroqRecipeTimesValidationPrompt(
+  url: string,
+  extractedRecipe: string
+): string {
   return `Validate and correct ONLY the time fields for this recipe JSON.
 
 URL: ${url}
@@ -58,7 +61,7 @@ Rules:
 - If the page or JSON-LD provides only Total Time, REMOVE prepTime and cookTime. Keep totalTime only.
 - If separate Prep or Cook times are explicitly present on the page or in JSON-LD, keep them as-is.
 
-Return JSON only.`
+Return JSON only.`;
 }
 
 export function createGroqRecipeStepsSimplificationPrompt(extractedRecipe: string): string {
@@ -74,8 +77,5 @@ Rules:
 - Combine trivial fragments; avoid over-explaining obvious actions.
 - Keep measurements and key actions intact.
 
-Return JSON only.`
+Return JSON only.`;
 }
-
-
-

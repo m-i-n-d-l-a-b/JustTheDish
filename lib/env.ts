@@ -1,5 +1,5 @@
-import { z } from "zod"
-import { logger } from "./logger"
+import { z } from "zod";
+import { logger } from "./logger";
 
 /**
  * Environment variables schema for validation
@@ -7,29 +7,26 @@ import { logger } from "./logger"
  */
 const envSchema = z.object({
   // Groq API Configuration
-  GROQ_API_KEY: z
-    .string()
-    .optional()
-    .describe("Groq API key for recipe extraction"),
+  GROQ_API_KEY: z.string().optional().describe("Groq API key for recipe extraction"),
   GROQ_MODEL: z
     .string()
     .default("groq/llama-3.3-70b-versatile")
     .describe("Groq model to use for recipe extraction"),
   GROQ_REQUEST_TIMEOUT: z
     .string()
-    .transform((val) => parseInt(val, 10))
+    .transform(val => parseInt(val, 10))
     .pipe(z.number().min(1000).max(120000))
     .default("30000")
     .describe("Groq request timeout in milliseconds (1-120 seconds)"),
   GROQ_MAX_RETRIES: z
     .string()
-    .transform((val) => parseInt(val, 10))
+    .transform(val => parseInt(val, 10))
     .pipe(z.number().min(0).max(5))
     .default("2")
     .describe("Groq maximum number of retries for failed requests"),
   GROQ_RETRY_DELAY: z
     .string()
-    .transform((val) => parseInt(val, 10))
+    .transform(val => parseInt(val, 10))
     .pipe(z.number().min(100).max(10000))
     .default("1000")
     .describe("Groq base delay between retries in milliseconds"),
@@ -37,9 +34,11 @@ const envSchema = z.object({
   // Groq feature flags
   GROQ_REPAIR_INGREDIENT_SPACING: z
     .string()
-    .transform((v) => (String(v ?? "").toLowerCase() === "true"))
+    .transform(v => String(v ?? "").toLowerCase() === "true")
     .default("false")
-    .describe("If true, apply minimal spacing repair on ingredients when obvious concatenation is detected"),
+    .describe(
+      "If true, apply minimal spacing repair on ingredients when obvious concatenation is detected"
+    ),
 
   // Next.js Environment
   NODE_ENV: z
@@ -58,21 +57,38 @@ const envSchema = z.object({
     .string()
     .default("*")
     .describe("Comma-separated list of allowed CORS origins, or * for all"),
-
-})
+});
 
 /**
  * Cached validated environment variables
  */
-let _env: z.infer<typeof envSchema> | null = null
+let _env: z.infer<typeof envSchema> | null = null;
 
 /**
  * Get validated environment variables with lazy loading
  * Use this instead of process.env directly to ensure type safety
  */
+/**
+ * Gets validated environment variables.
+ * Validates all environment variables against the schema and caches the result.
+ * Throws a descriptive error if validation fails.
+ *
+ * @returns A validated environment variables object
+ * @throws {Error} If environment variables are missing or invalid
+ *
+ * @example
+ * ```typescript
+ * try {
+ *   const env = getEnv();
+ *   const apiKey = env.GROQ_API_KEY;
+ * } catch (error) {
+ *   console.error("Environment validation failed:", error.message);
+ * }
+ * ```
+ */
 export function getEnv(): z.infer<typeof envSchema> {
   if (_env) {
-    return _env
+    return _env;
   }
 
   try {
@@ -86,20 +102,20 @@ export function getEnv(): z.infer<typeof envSchema> {
       NODE_ENV: process.env.NODE_ENV,
       NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
       ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
-    })
-    return _env
+    });
+    return _env;
   } catch (error) {
     if (error instanceof z.ZodError) {
       const missingVars = error.errors
-        .map((err) => `${err.path.join(".")}: ${err.message}`)
-        .join("\n")
+        .map(err => `${err.path.join(".")}: ${err.message}`)
+        .join("\n");
 
       throw new Error(
         `❌ Invalid environment variables:\n${missingVars}\n\n` +
           `Please check your .env.local file and ensure all required variables are set.`
-      )
+      );
     }
-    throw error
+    throw error;
   }
 }
 
@@ -109,15 +125,15 @@ export function getEnv(): z.infer<typeof envSchema> {
  */
 export const env = new Proxy({} as z.infer<typeof envSchema>, {
   get(target, prop) {
-    const envVars = getEnv()
-    return envVars[prop as keyof typeof envVars]
-  }
-})
+    const envVars = getEnv();
+    return envVars[prop as keyof typeof envVars];
+  },
+});
 
 /**
  * Type definition for validated environment variables
  */
-export type Env = z.infer<typeof envSchema>
+export type Env = z.infer<typeof envSchema>;
 
 /**
  * Runtime check to ensure environment is properly configured
@@ -125,16 +141,19 @@ export type Env = z.infer<typeof envSchema>
  */
 export function validateEnvironment(): void {
   try {
-    const envVars = getEnv()
-    logger.log(`Environment validated for ${envVars.NODE_ENV} mode`)
-    
+    const envVars = getEnv();
+    logger.log(`Environment validated for ${envVars.NODE_ENV} mode`);
+
     if (envVars.NODE_ENV === "development") {
-      logger.log(`Using Groq model: ${envVars.GROQ_MODEL}`)
-      logger.log(`Request timeout: ${envVars.GROQ_REQUEST_TIMEOUT}ms`)
-      logger.log(`Max retries: ${envVars.GROQ_MAX_RETRIES}`)
+      logger.log(`Using Groq model: ${envVars.GROQ_MODEL}`);
+      logger.log(`Request timeout: ${envVars.GROQ_REQUEST_TIMEOUT}ms`);
+      logger.log(`Max retries: ${envVars.GROQ_MAX_RETRIES}`);
     }
   } catch (error) {
-    logger.error("Environment validation failed:", error instanceof Error ? error.message : String(error))
-    throw error
+    logger.error(
+      "Environment validation failed:",
+      error instanceof Error ? error.message : String(error)
+    );
+    throw error;
   }
 }
