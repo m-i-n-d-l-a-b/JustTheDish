@@ -70,21 +70,3 @@ export function getStatusCodeForErrorType(errorType: RecipeError["type"]): numbe
   }
 }
 
-/**
- * Checks if an error type is retryable.
- * Retryable errors are those that might succeed on a subsequent attempt,
- * such as temporary service unavailability or rate limits.
- *
- * @param errorType - The error type from RecipeError type union
- * @returns True if the error is retryable, false otherwise
- *
- * @example
- * ```typescript
- * if (isRetryableError(error.type)) {
- *   // Implement retry logic with exponential backoff
- * }
- * ```
- */
-export function isRetryableError(errorType: RecipeError["type"]): boolean {
-  return errorType === "ai-unavailable" || errorType === "rate-limit";
-}

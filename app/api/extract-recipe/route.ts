@@ -43,20 +43,6 @@ export async function POST(request: NextRequest) {
       return addCorsHeaders(response, origin);
     }
 
-    // Validate URL input
-    if (!url || typeof url !== "string") {
-      const response = NextResponse.json(
-        {
-          error: {
-            type: "invalid-url",
-            message: "Please provide a valid URL.",
-          },
-        },
-        { status: 400 }
-      );
-      return addCorsHeaders(response, origin);
-    }
-
     // Check rate limit
     const rateLimitKey = getRateLimitKey(request);
     const rateLimitInfo = checkRateLimitWithInfo(rateLimitKey);
@@ -73,22 +59,6 @@ export async function POST(request: NextRequest) {
       response.headers.set("X-RateLimit-Limit", rateLimitInfo.limit.toString());
       response.headers.set("X-RateLimit-Remaining", rateLimitInfo.remaining.toString());
       response.headers.set("X-RateLimit-Reset", rateLimitInfo.reset.toString());
-      return addCorsHeaders(response, origin);
-    }
-
-    // Validate URL format using schema
-    try {
-      validateRecipeUrl(url);
-    } catch (_validationError) {
-      const response = NextResponse.json(
-        {
-          error: {
-            type: "invalid-url",
-            message: ERROR_MESSAGES.INVALID_URL,
-          },
-        },
-        { status: HTTP_STATUS.BAD_REQUEST }
-      );
       return addCorsHeaders(response, origin);
     }
 

@@ -196,6 +196,132 @@ export class GroqRecipeExtractionService {
   }
 
   /**
+   * Attempts to repair ingredient spacing issues in a recipe.
+   * Detects spacing issues like "1cupsugar" and attempts a focused second pass.
+   *
+   * @param recipe - The recipe to repair
+   * @param validatedUrl - The validated URL of the recipe
+   * @param env - Environment variables
+   * @returns The repaired recipe, or null if repair failed
+   */
+  private async repairIngredientSpacingIfNeeded(
+    recipe: Recipe,
+    validatedUrl: string,
+    env: ReturnType<typeof getEnv>
+  ): Promise<Recipe | null> {
+    if (!hasIngredientSpacingIssues(recipe.ingredients) || !env.GROQ_REPAIR_INGREDIENT_SPACING) {
+      return null;
+    }
+
+    try {
+      const validationPrompt = createGroqRecipeValidationPrompt(JSON.stringify({ recipe }));
+      const validationResponse = await this.client.chatCompletionsCreate({
+        messages: [
+          { role: "system", content: validationPrompt },
+          {
+            role: "user",
+            content: `URL: ${validatedUrl}\nFix only ingredient spacing as per instructions. Return JSON only.`,
+          },
+        ],
+        userAgent: "just-the-dish/recipe-extraction-validate",
+      });
+      const reparsed: RecipeExtractionResponse = parseGroqRecipeResponse(validationResponse.text);
+      if (reparsed.recipe) {
+        const secondPass = sanitizeRecipe(reparsed.recipe);
+        if (env.GROQ_REPAIR_INGREDIENT_SPACING) {
+          secondPass.ingredients = repairIngredientSpacing(secondPass.ingredients);
+        }
+        return secondPass;
+      }
+    } catch (e) {
+      logger.warn("Ingredient spacing repair failed, falling back to first pass", {
+        error: e instanceof Error ? e.message : String(e),
+        context: "repairIngredientSpacingIfNeeded",
+      });
+    }
+    return null;
+  }
+
+  /**
+   * Validates and fixes time fields in a recipe.
+   * If totalTime exists and prep/cook are missing in source, removes inferred ones.
+   *
+   * @param recipe - The recipe to validate
+   * @param validatedUrl - The validated URL of the recipe
+   * @param requestId - Request ID for tracking
+   * @returns The recipe with fixed times, or null if validation failed
+   */
+  private async validateAndFixTimes(
+    recipe: Recipe,
+    validatedUrl: string,
+    requestId: string
+  ): Promise<Recipe | null> {
+    if (!recipe.totalTime) {
+      return null;
+    }
+
+    try {
+      const timesPrompt = createGroqRecipeTimesValidationPrompt(
+        validatedUrl,
+        JSON.stringify({ recipe })
+      );
+      const timesResponse = await this.client.chatCompletionsCreate({
+        messages: [
+          { role: "system", content: timesPrompt },
+          {
+            role: "user",
+            content: `Ensure time fields reflect the page or JSON-LD exactly. Return JSON only.`,
+          },
+        ],
+        userAgent: "just-the-dish/recipe-extraction-validate-times",
+        requestId,
+      });
+      const timesParsed: RecipeExtractionResponse = parseGroqRecipeResponse(timesResponse.text);
+      if (timesParsed.recipe) {
+        return sanitizeRecipe(timesParsed.recipe);
+      }
+    } catch (e) {
+      logger.warn("Times validation failed, using first pass", {
+        error: e instanceof Error ? e.message : String(e),
+        context: "validateAndFixTimes",
+      });
+    }
+    return null;
+  }
+
+  /**
+   * Simplifies recipe steps to be more concise while preserving order and meaning.
+   *
+   * @param recipe - The recipe to simplify
+   * @returns The recipe with simplified steps, or null if simplification failed
+   */
+  private async simplifyStepsIfNeeded(recipe: Recipe): Promise<Recipe | null> {
+    try {
+      const stepsPrompt = createGroqRecipeStepsSimplificationPrompt(JSON.stringify({ recipe }));
+      const stepsResponse = await this.client.chatCompletionsCreate({
+        messages: [
+          { role: "system", content: stepsPrompt },
+          {
+            role: "user",
+            content: `Rewrite steps only. Keep order and meaning. Return JSON only.`,
+          },
+        ],
+        userAgent: "just-the-dish/recipe-extraction-simplify-steps",
+      });
+      const stepsParsed: RecipeExtractionResponse = parseGroqRecipeResponse(stepsResponse.text);
+      if (stepsParsed.recipe) {
+        return sanitizeRecipe(stepsParsed.recipe);
+      }
+    } catch (e) {
+      logger.warn("Steps simplification failed, using original steps", {
+        error: e instanceof Error ? e.message : String(e),
+        context: "simplifyStepsIfNeeded",
+      });
+    }
+    return null;
+  }
+
+  /**
    * Extracts recipe data from a given URL using Groq AI.
    * Fetches the webpage content, builds extraction prompts, calls Groq API,
    * parses and validates the response, and sanitizes the result.
@@ -236,8 +362,9 @@ export class GroqRecipeExtractionService {
 
     try {
       const validatedUrl = validateRecipeUrl(url);
+      const env = getEnv();
       // Prefetch lightweight JSON-LD (if present) to ground ingredients/times exactly
-      const jsonLd = await fetchRecipeJsonLd(validatedUrl);
+      const jsonLd = await fetchRecipeJsonLd(validatedUrl, env);
       const prompt = appendJsonLdToSystemPrompt(
         createGroqRecipeExtractionPrompt(validatedUrl),
         jsonLd
@@ -255,130 +382,41 @@ export class GroqRecipeExtractionService {
       const metadata = this.createMetadata(requestId, validatedUrl, start);
 
       if (parsed.recipe) {
-        const firstPass = sanitizeRecipe(parsed.recipe);
-        const env = getEnv();
-        // Detect likely spacing issues like "1cupsugar" and try a focused second pass
-        if (
-          hasIngredientSpacingIssues(firstPass.ingredients) &&
-          getEnv().GROQ_REPAIR_INGREDIENT_SPACING
-        ) {
-          try {
-            const validationPrompt = createGroqRecipeValidationPrompt(
-              JSON.stringify({ recipe: firstPass })
-            );
-            const validationResponse = await this.client.chatCompletionsCreate({
-              messages: [
-                { role: "system", content: validationPrompt },
-                {
-                  role: "user",
-                  content: `URL: ${validatedUrl}\nFix only ingredient spacing as per instructions. Return JSON only.`,
-                },
-              ],
-              userAgent: "just-the-dish/recipe-extraction-validate",
-            });
-            const reparsed: RecipeExtractionResponse = parseGroqRecipeResponse(
-              validationResponse.text
-            );
-            if (reparsed.recipe) {
-              const secondPass = sanitizeRecipe(reparsed.recipe);
-              // Optional minimal, deterministic repair: insert a space between digits and letters when missing
-              if (env.GROQ_REPAIR_INGREDIENT_SPACING) {
-                secondPass.ingredients = repairIngredientSpacing(secondPass.ingredients);
-              }
-              this.log(metadata, true);
-              return { recipe: secondPass, metadata };
-            }
-          } catch (e) {
-            // Ignore and fall back to first pass
-          }
-          // If second pass is enabled but didn't yield better result, optionally apply minimal repair to first pass
-          if (env.GROQ_REPAIR_INGREDIENT_SPACING) {
-            firstPass.ingredients = repairIngredientSpacing(firstPass.ingredients);
-          }
+        let recipe = sanitizeRecipe(parsed.recipe);
+
+        // Attempt ingredient spacing repair if needed
+        const spacingRepaired = await this.repairIngredientSpacingIfNeeded(recipe, validatedUrl, env);
+        if (spacingRepaired) {
+          this.log(metadata, true);
+          return { recipe: spacingRepaired, metadata };
         }
-        // Times validation pass: if totalTime exists and prep/cook are missing in source, remove inferred ones
-        try {
-          if (firstPass.totalTime) {
-            const timesPrompt = createGroqRecipeTimesValidationPrompt(
-              validatedUrl,
-              JSON.stringify({ recipe: firstPass })
-            );
-            const timesResponse = await this.client.chatCompletionsCreate({
-              messages: [
-                { role: "system", content: timesPrompt },
-                {
-                  role: "user",
-                  content: `Ensure time fields reflect the page or JSON-LD exactly. Return JSON only.`,
-                },
-              ],
-              userAgent: "just-the-dish/recipe-extraction-validate-times",
-              requestId,
-            });
-            const timesParsed: RecipeExtractionResponse = parseGroqRecipeResponse(
-              timesResponse.text
-            );
-            if (timesParsed.recipe) {
-              const timesFixed = sanitizeRecipe(timesParsed.recipe);
-              // Steps simplification pass: rewrite ONLY steps to be concise, preserving order and meaning
-              try {
-                const stepsPrompt = createGroqRecipeStepsSimplificationPrompt(
-                  JSON.stringify({ recipe: timesFixed })
-                );
-                const stepsResponse = await this.client.chatCompletionsCreate({
-                  messages: [
-                    { role: "system", content: stepsPrompt },
-                    {
-                      role: "user",
-                      content: `Rewrite steps only. Keep order and meaning. Return JSON only.`,
-                    },
-                  ],
-                  userAgent: "just-the-dish/recipe-extraction-simplify-steps",
-                });
-                const stepsParsed: RecipeExtractionResponse = parseGroqRecipeResponse(
-                  stepsResponse.text
-                );
-                if (stepsParsed.recipe) {
-                  const stepsFixed = sanitizeRecipe(stepsParsed.recipe);
-                  this.log(metadata, true);
-                  return { recipe: stepsFixed, metadata };
-                }
-              } catch {
-                // ignore and return timesFixed
-              }
-              this.log(metadata, true);
-              return { recipe: timesFixed, metadata };
-            }
-          }
-        } catch {
-          // ignore and use first pass
+        // If repair was attempted but failed, apply minimal repair to first pass
+        if (hasIngredientSpacingIssues(recipe.ingredients) && env.GROQ_REPAIR_INGREDIENT_SPACING) {
+          recipe.ingredients = repairIngredientSpacing(recipe.ingredients);
         }
 
-        // Steps simplification pass when no times fix was applied
-        try {
-          const stepsPrompt = createGroqRecipeStepsSimplificationPrompt(
-            JSON.stringify({ recipe: firstPass })
-          );
-          const stepsResponse = await this.client.chatCompletionsCreate({
-            messages: [
-              { role: "system", content: stepsPrompt },
-              {
-                role: "user",
-                content: `Rewrite steps only. Keep order and meaning. Return JSON only.`,
-              },
-            ],
-            userAgent: "just-the-dish/recipe-extraction-simplify-steps",
-          });
-          const stepsParsed: RecipeExtractionResponse = parseGroqRecipeResponse(stepsResponse.text);
-          if (stepsParsed.recipe) {
-            const stepsFixed = sanitizeRecipe(stepsParsed.recipe);
+        // Attempt times validation and fix
+        const timesFixed = await this.validateAndFixTimes(recipe, validatedUrl, requestId);
+        if (timesFixed) {
+          // If times were fixed, also try to simplify steps
+          const stepsSimplified = await this.simplifyStepsIfNeeded(timesFixed);
+          if (stepsSimplified) {
             this.log(metadata, true);
-            return { recipe: stepsFixed, metadata };
+            return { recipe: stepsSimplified, metadata };
           }
-        } catch {
-          // ignore
+          this.log(metadata, true);
+          return { recipe: timesFixed, metadata };
         }
+
+        // If no times fix was applied, try steps simplification on original recipe
+        const stepsSimplified = await this.simplifyStepsIfNeeded(recipe);
+        if (stepsSimplified) {
+          this.log(metadata, true);
+          return { recipe: stepsSimplified, metadata };
+        }
+
         this.log(metadata, true);
-        return { recipe: firstPass, metadata };
+        return { recipe, metadata };
       }
 
       if (parsed.error) {
@@ -443,9 +481,11 @@ export const groqRecipeExtractionService = new GroqRecipeExtractionService();
 
 // --- Internal helpers to lightly ground the model with page JSON-LD ---
 
-async function fetchRecipeJsonLd(url: string): Promise<unknown | null> {
+async function fetchRecipeJsonLd(
+  url: string,
+  env: ReturnType<typeof getEnv>
+): Promise<unknown | null> {
   try {
-    const env = getEnv();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), env.GROQ_REQUEST_TIMEOUT);
     const res = await fetch(url, {
@@ -472,12 +512,19 @@ async function fetchRecipeJsonLd(url: string): Promise<unknown | null> {
         const parsed = JSON.parse(sanitizePotentiallyCommentedJson(raw));
         const candidate = findRecipeObjectInJsonLd(parsed);
         if (candidate) return candidate;
-      } catch {
-        // ignore malformed blocks
+      } catch (e) {
+        logger.warn("JSON-LD parsing failed, skipping block", {
+          error: e instanceof Error ? e.message : String(e),
+          context: "fetchRecipeJsonLd",
+        });
       }
     }
     return null;
-  } catch {
+  } catch (e) {
+    logger.warn("Failed to fetch recipe JSON-LD, continuing without it", {
+      error: e instanceof Error ? e.message : String(e),
+      context: "fetchRecipeJsonLd",
+    });
     return null;
   }
 }

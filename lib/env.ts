@@ -119,41 +119,9 @@ export function getEnv(): z.infer<typeof envSchema> {
   }
 }
 
-/**
- * Legacy export for backward compatibility
- * @deprecated Use getEnv() instead for better error handling
- */
-export const env = new Proxy({} as z.infer<typeof envSchema>, {
-  get(target, prop) {
-    const envVars = getEnv();
-    return envVars[prop as keyof typeof envVars];
-  },
-});
 
 /**
  * Type definition for validated environment variables
  */
 export type Env = z.infer<typeof envSchema>;
 
-/**
- * Runtime check to ensure environment is properly configured
- * Call this during application startup
- */
-export function validateEnvironment(): void {
-  try {
-    const envVars = getEnv();
-    logger.log(`Environment validated for ${envVars.NODE_ENV} mode`);
-
-    if (envVars.NODE_ENV === "development") {
-      logger.log(`Using Groq model: ${envVars.GROQ_MODEL}`);
-      logger.log(`Request timeout: ${envVars.GROQ_REQUEST_TIMEOUT}ms`);
-      logger.log(`Max retries: ${envVars.GROQ_MAX_RETRIES}`);
-    }
-  } catch (error) {
-    logger.error(
-      "Environment validation failed:",
-      error instanceof Error ? error.message : String(error)
-    );
-    throw error;
-  }
-}

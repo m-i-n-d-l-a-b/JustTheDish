@@ -186,5 +186,3 @@ export class GroqClient {
     return this.withRetry(op, "Groq chat completion");
   }
 }
-
-// fetch helpers removed since groq-sdk is used
