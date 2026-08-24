@@ -81,6 +81,16 @@ export function parseGroqRecipeResponse(responseText: string) {
   try {
     const text = stripReasoningBlocks(responseText);
 
+    // An opening tag surviving the strip means it was never closed: the model was
+    // truncated mid-reasoning and never emitted a payload. Report that directly
+    // instead of letting JSON.parse blame the leading '<'.
+    if (/<think\b/i.test(text)) {
+      throw new Error(
+        "response contained an unterminated reasoning block and no JSON payload " +
+          "(the model was likely truncated mid-reasoning)"
+      );
+    }
+
     let parsed: unknown;
     const firstBrace = text.indexOf("{");
     const lastBrace = text.lastIndexOf("}");

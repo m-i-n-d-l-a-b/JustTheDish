@@ -202,4 +202,12 @@ describe("parseGroqRecipeResponse", () => {
     const result = parseGroqRecipeResponse(response);
     expect(result.recipe?.title).toBe("Plain");
   });
+
+  it("should report an unterminated reasoning block rather than a JSON syntax error", () => {
+    // Reproduces the production failure: the model exhausts its completion budget
+    // inside <think> and is truncated before emitting any JSON payload.
+    const response = "<think>\nThe user wants me to extract {recipe} data, so first I";
+    expect(() => parseGroqRecipeResponse(response)).toThrow(/unterminated reasoning block/i);
+    expect(() => parseGroqRecipeResponse(response)).not.toThrow(/Unexpected token/i);
+  });
 });

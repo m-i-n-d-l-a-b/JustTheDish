@@ -24,6 +24,15 @@ const envSchema = z.object({
     .pipe(z.number().min(0).max(5))
     .default("2")
     .describe("Groq maximum number of retries for failed requests"),
+  GROQ_REASONING_EFFORT: z
+    .string()
+    .default("none")
+    .describe(
+      "Reasoning effort for reasoning-capable models. 'none' disables thinking " +
+        "(required for qwen/qwen3.6-27b, which otherwise spends its whole completion " +
+        "budget reasoning and never emits JSON). Empty string omits the parameter " +
+        "entirely, for models that reject it."
+    ),
   GROQ_RETRY_DELAY: z
     .string()
     .transform(val => parseInt(val, 10))
@@ -98,6 +107,7 @@ export function getEnv(): z.infer<typeof envSchema> {
       GROQ_REQUEST_TIMEOUT: process.env.GROQ_REQUEST_TIMEOUT,
       GROQ_MAX_RETRIES: process.env.GROQ_MAX_RETRIES,
       GROQ_RETRY_DELAY: process.env.GROQ_RETRY_DELAY,
+      GROQ_REASONING_EFFORT: process.env.GROQ_REASONING_EFFORT,
       GROQ_REPAIR_INGREDIENT_SPACING: process.env.GROQ_REPAIR_INGREDIENT_SPACING,
       NODE_ENV: process.env.NODE_ENV,
       NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

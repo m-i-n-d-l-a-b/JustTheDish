@@ -166,12 +166,21 @@ export class GroqClient {
     const env = getEnv();
     const model = params.model || env.GROQ_MODEL;
     const op = async () => {
-      const res = await this.sdk.chat.completions.create({
+      const body: Record<string, unknown> = {
         model,
         messages: params.messages,
         temperature: 0,
         // headers handled via defaultHeaders in client
-      });
+      };
+      // Reasoning-capable models otherwise spend the whole completion budget on a
+      // <think> block and get truncated before emitting any JSON. Omitted when the
+      // configured value is empty, for models that reject the parameter.
+      if (env.GROQ_REASONING_EFFORT) {
+        body.reasoning_effort = env.GROQ_REASONING_EFFORT;
+      }
+      const res = await this.sdk.chat.completions.create(
+        body as unknown as Parameters<Groq["chat"]["completions"]["create"]>[0]
+      );
       const typedRes = res as unknown as GroqChatCompletionResponse;
       const firstChoice = typedRes.choices?.[0];
       if (!firstChoice) {
@@ -181,6 +190,15 @@ export class GroqClient {
       const content = message.content;
       const text: string = typeof content === "string" ? content : "";
       if (!text) throw new Error("Empty response received from Groq");
+      // A truncated completion yields partial or reasoning-only text. Say so plainly
+      // rather than letting it surface downstream as an opaque JSON parse failure.
+      if (firstChoice.finish_reason === "length") {
+        throw new Error(
+          "Groq response was truncated before completion (finish_reason=length). " +
+            "The model likely exhausted its completion budget; consider setting " +
+            "GROQ_REASONING_EFFORT=none."
+        );
+      }
       return { text, reasoning: message.reasoning, executed_tools: message.executed_tools };
     };
     return this.withRetry(op, "Groq chat completion");

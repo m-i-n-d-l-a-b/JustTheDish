@@ -12,6 +12,7 @@ describe("GroqClient", () => {
       GROQ_REQUEST_TIMEOUT: 100,
       GROQ_MAX_RETRIES: 1,
       GROQ_RETRY_DELAY: 10,
+      GROQ_REASONING_EFFORT: "none",
       GROQ_REPAIR_INGREDIENT_SPACING: false,
       NODE_ENV: "test",
       NEXT_PUBLIC_APP_URL: "http://localhost:3000",
