@@ -31,6 +31,32 @@ function isRecipeRecord(recipe: unknown): recipe is Record<string, unknown> {
 }
 
 /**
+ * Removes reasoning blocks that reasoning-capable models emit ahead of their
+ * JSON payload.
+ *
+ * Models such as `qwen/qwen3.6-27b` prefix responses with a `<think>...</think>`
+ * block. That text routinely contains braces, so brace-scanning for the JSON
+ * payload would otherwise start inside the reasoning and yield invalid JSON.
+ *
+ * @param text - The raw response text from Groq
+ * @returns The text with any reasoning blocks removed
+ */
+function stripReasoningBlocks(text: string): string {
+  // Remove well-formed <think>...</think> pairs.
+  let stripped = text.replace(/<think>[\s\S]*?<\/think>/gi, "");
+
+  // A closing tag surviving that pass means the opening tag was absent or
+  // malformed; everything up to the last close is still reasoning.
+  const closingTag = "</think>";
+  const lastClose = stripped.toLowerCase().lastIndexOf(closingTag);
+  if (lastClose !== -1) {
+    stripped = stripped.slice(lastClose + closingTag.length);
+  }
+
+  return stripped.trim();
+}
+
+/**
  * Parses and validates a Groq AI response containing recipe data.
  * Handles various JSON formats, normalizes synonym keys, and converts step objects to strings.
  * Throws an error if parsing or validation fails.
@@ -53,7 +79,7 @@ function isRecipeRecord(recipe: unknown): recipe is Record<string, unknown> {
  */
 export function parseGroqRecipeResponse(responseText: string) {
   try {
-    const text = responseText.trim();
+    const text = stripReasoningBlocks(responseText);
 
     let parsed: unknown;
     const firstBrace = text.indexOf("{");
