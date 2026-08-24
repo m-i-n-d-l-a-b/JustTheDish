@@ -10,7 +10,7 @@ const envSchema = z.object({
   GROQ_API_KEY: z.string().optional().describe("Groq API key for recipe extraction"),
   GROQ_MODEL: z
     .string()
-    .default("groq/llama-3.3-70b-versatile")
+    .default("qwen/qwen3.6-27b")
     .describe("Groq model to use for recipe extraction"),
   GROQ_REQUEST_TIMEOUT: z
     .string()
