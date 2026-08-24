@@ -149,4 +149,57 @@ describe("parseGroqRecipeResponse", () => {
     const result = parseGroqRecipeResponse(response);
     expect(result.recipe?.title).toBe("Test");
   });
+  it("should strip a <think> reasoning block preceding the JSON", () => {
+    // Reproduces the production failure: qwen/qwen3.6-27b prefixes its answer
+    // with a reasoning block whose braces derail brace-scanning for the payload.
+    const response =
+      "<think>\nThe user wants JSON like {recipe: ...}. Let me check the ingredients.\n</think>\n" +
+      JSON.stringify({
+        recipe: {
+          title: "Simple White Cake",
+          ingredients: ["1 cup white sugar"],
+          steps: ["Preheat the oven"],
+        },
+      });
+    const result = parseGroqRecipeResponse(response);
+    expect(result.recipe?.title).toBe("Simple White Cake");
+    expect(result.recipe?.ingredients).toEqual(["1 cup white sugar"]);
+  });
+
+  it("should strip a reasoning block that is fenced as well", () => {
+    const response =
+      "<think>Considering {a} and {b}</think>\n```json\n" +
+      JSON.stringify({
+        recipe: { title: "Fenced", ingredients: ["salt"], steps: ["Stir the mixture"] },
+      }) +
+      "\n```";
+    const result = parseGroqRecipeResponse(response);
+    expect(result.recipe?.title).toBe("Fenced");
+  });
+
+  it("should recover when only a closing </think> tag is present", () => {
+    const response =
+      "Reasoning about {this} first.</think>\n" +
+      JSON.stringify({
+        recipe: { title: "Unpaired", ingredients: ["water"], steps: ["Boil the water"] },
+      });
+    const result = parseGroqRecipeResponse(response);
+    expect(result.recipe?.title).toBe("Unpaired");
+  });
+
+  it("should strip a reasoning block preceding an error payload", () => {
+    const response =
+      "<think>This page has no {recipe} on it.</think>\n" +
+      JSON.stringify({ error: { type: "not-recipe", message: "No recipe found" } });
+    const result = parseGroqRecipeResponse(response);
+    expect(result.error?.type).toBe("not-recipe");
+  });
+
+  it("should leave responses without reasoning blocks unchanged", () => {
+    const response = JSON.stringify({
+      recipe: { title: "Plain", ingredients: ["flour"], steps: ["Bake until golden"] },
+    });
+    const result = parseGroqRecipeResponse(response);
+    expect(result.recipe?.title).toBe("Plain");
+  });
 });
